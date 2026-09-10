@@ -50,6 +50,8 @@ See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for conventions and module ma
 | `npm run db:reset` | wipe DB and reseed |
 | `npx tsx scripts/generate-art.ts` | regenerate SVG artwork + PWA icons |
 | `npm run typecheck` | `tsc --noEmit` |
+| `npx tsx scripts/dev/smoke.ts` | fetch every route as anonymous / devotee / pandit / admin against a running dev server |
+| `npx tsx scripts/dev/cookie.ts 9111111111` | print a signed session cookie for curl-based testing |
 
 ## Production notes
 
