@@ -1,0 +1,677 @@
+// DivyaDham — temple services platform (Sri Mandir style)
+// SQLite for zero-config local dev; switch provider to postgresql for production.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ─────────────────────────── Identity ───────────────────────────
+
+enum Role {
+  USER
+  PANDIT
+  ADMIN
+}
+
+model User {
+  id           String    @id @default(cuid())
+  phone        String?   @unique
+  email        String?   @unique
+  passwordHash String?
+  name         String?
+  role         Role      @default(USER)
+  locale       String    @default("en") // "en" | "hi"
+  avatarUrl    String?
+  gender       String?
+  gotra        String?
+  dob          String? // YYYY-MM-DD
+  tob          String? // HH:mm
+  birthPlace   String?
+  rashi        String?
+  city         String?
+  state        String?
+  pincode      String?
+  addressLine  String?
+  onboarded    Boolean   @default(false)
+  isBlocked    Boolean   @default(false)
+  lastSeenAt   DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  pandit        PanditProfile?
+  bookings      Booking[]          @relation("UserBookings")
+  notifications Notification[]
+  pushSubs      PushSubscription[]
+  reviews       Review[]
+  familyMembers FamilyMember[]
+  auditLogs     AuditLog[]
+  favorites     Favorite[]
+  consultations Consultation[]     @relation("UserConsultations")
+}
+
+model FamilyMember {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name      String
+  relation  String? // self, spouse, father, mother, son, daughter...
+  gotra     String?
+  dob       String?
+  createdAt DateTime @default(now())
+}
+
+model OtpCode {
+  id        String   @id @default(cuid())
+  target    String // phone or email
+  code      String
+  expiresAt DateTime
+  attempts  Int      @default(0)
+  consumed  Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([target])
+}
+
+// ─────────────────────────── Pandit ───────────────────────────
+
+enum PanditClassification {
+  VEDIC // Vedic rituals, yajna, homam
+  PUROHIT // Family rituals: griha pravesh, vivah, naamkaran, shraddh
+  JYOTISHI // Astrology / kundli
+  KARMAKANDI // Full karmakanda & shanti paths
+  TANTRIK // Tantric/Shakta rituals
+  VASTU // Vastu consultant
+  KATHAVACHAK // Katha / pravachan (Bhagwat, Ramayan)
+}
+
+enum KycStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  SUBMITTED
+  APPROVED
+  REJECTED
+}
+
+model PanditProfile {
+  id              String               @id @default(cuid())
+  userId          String               @unique
+  user            User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  displayName     String
+  displayNameHi   String?
+  bio             String?
+  bioHi           String?
+  photoUrl        String?
+  classification  PanditClassification @default(PUROHIT)
+  specialities    String               @default("[]") // JSON string[] e.g. ["griha-pravesh","satyanarayan"]
+  languages       String               @default("[\"hi\"]") // JSON string[]
+  experienceYears Int                  @default(0)
+  sampradaya      String? // e.g. Shaiva, Vaishnava, Shakta, Smarta
+  gotra           String?
+  education       String? // e.g. Acharya (Sanskrit), Shastri
+  city            String?
+  state           String?
+  pincode         String?
+  serviceRadiusKm Int                  @default(25)
+  servesOnline    Boolean              @default(true)
+  servesAtHome    Boolean              @default(true)
+  servesAtTemple  Boolean              @default(false)
+  templeId        String?
+  temple          Temple?              @relation(fields: [templeId], references: [id])
+  kycStatus       KycStatus            @default(NOT_STARTED)
+  kycSubmittedAt  DateTime?
+  kycReviewedAt   DateTime?
+  kycReviewNote   String?
+  verified        Boolean              @default(false)
+  featured        Boolean              @default(false)
+  isActive        Boolean              @default(true)
+  ratingAvg       Float                @default(0)
+  ratingCount     Int                  @default(0)
+  completedCount  Int                  @default(0)
+  commissionPct   Int                  @default(20) // platform commission
+  bankAccountName String?
+  bankAccountNo   String?
+  bankIfsc        String?
+  upiId           String?
+  createdAt       DateTime             @default(now())
+  updatedAt       DateTime             @updatedAt
+
+  documents     KycDocument[]
+  availability  PanditAvailability[]
+  blockedDates  PanditBlockedDate[]
+  services      PanditService[]
+  bookings      Booking[]            @relation("PanditBookings")
+  payouts       Payout[]
+  reviews       Review[]
+  consultations Consultation[]       @relation("PanditConsultations")
+}
+
+enum KycDocType {
+  AADHAAR_FRONT
+  AADHAAR_BACK
+  PAN
+  PHOTO
+  CERTIFICATE
+  BANK_PROOF
+  ADDRESS_PROOF
+  OTHER
+}
+
+model KycDocument {
+  id        String        @id @default(cuid())
+  panditId  String
+  pandit    PanditProfile @relation(fields: [panditId], references: [id], onDelete: Cascade)
+  type      KycDocType
+  fileUrl   String
+  docNumber String? // masked number e.g. XXXX-XXXX-1234
+  status    String        @default("PENDING") // PENDING | APPROVED | REJECTED
+  note      String?
+  createdAt DateTime      @default(now())
+}
+
+model PanditAvailability {
+  id        String        @id @default(cuid())
+  panditId  String
+  pandit    PanditProfile @relation(fields: [panditId], references: [id], onDelete: Cascade)
+  weekday   Int // 0=Sun .. 6=Sat
+  startTime String // "06:00"
+  endTime   String // "12:00"
+  enabled   Boolean       @default(true)
+}
+
+model PanditBlockedDate {
+  id       String        @id @default(cuid())
+  panditId String
+  pandit   PanditProfile @relation(fields: [panditId], references: [id], onDelete: Cascade)
+  date     String // YYYY-MM-DD
+  reason   String?
+}
+
+/// Which services a pandit offers, with optional custom price
+model PanditService {
+  id        String        @id @default(cuid())
+  panditId  String
+  pandit    PanditProfile @relation(fields: [panditId], references: [id], onDelete: Cascade)
+  serviceId String
+  service   Service       @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  price     Int? // override in INR; null = service basePrice
+  active    Boolean       @default(true)
+
+  @@unique([panditId, serviceId])
+}
+
+// ─────────────────────────── Catalog ───────────────────────────
+
+enum ServiceType {
+  ONLINE_POOJA // performed at temple by pandit on behalf of devotee; video shared
+  PANDIT_AT_HOME // pandit visits devotee home
+  CHADHAVA // offering at temple (flowers, prasad, cloth, etc.)
+  ASTROLOGY // kundli / consultation
+  PRASAD // prasad delivery from temple
+  KATHA // multi-day katha / path
+  LIVE_DARSHAN // live darshan pass / special darshan
+}
+
+model Category {
+  id        String       @id @default(cuid())
+  slug      String       @unique
+  nameEn    String
+  nameHi    String
+  icon      String? // lucide icon name or emoji
+  imageUrl  String?
+  type      ServiceType?
+  sortOrder Int          @default(0)
+  active    Boolean      @default(true)
+  services  Service[]
+}
+
+model Temple {
+  id             String   @id @default(cuid())
+  slug           String   @unique
+  nameEn         String
+  nameHi         String
+  deityEn        String?
+  deityHi        String?
+  city           String
+  state          String
+  descriptionEn  String?
+  descriptionHi  String?
+  historyEn      String?
+  historyHi      String?
+  images         String   @default("[]") // JSON string[]
+  coverUrl       String?
+  latitude       Float?
+  longitude      Float?
+  timings        String? // "05:00-12:00, 16:00-21:00"
+  liveDarshanUrl String?
+  featured       Boolean  @default(false)
+  active         Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  services Service[]
+  pandits  PanditProfile[]
+  bookings Booking[]
+}
+
+model Service {
+  id             String      @id @default(cuid())
+  slug           String      @unique
+  type           ServiceType
+  nameEn         String
+  nameHi         String
+  taglineEn      String?
+  taglineHi      String?
+  descriptionEn  String?
+  descriptionHi  String?
+  benefitsEn     String      @default("[]") // JSON string[]
+  benefitsHi     String      @default("[]")
+  processEn      String      @default("[]") // JSON steps
+  processHi      String      @default("[]")
+  faqEn          String      @default("[]") // JSON {q,a}[]
+  faqHi          String      @default("[]")
+  deityEn        String?
+  deityHi        String?
+  images         String      @default("[]") // JSON string[]
+  coverUrl       String?
+  basePrice      Int // INR, smallest package
+  compareAtPrice Int?
+  durationMin    Int? // for at-home/online pooja
+  categoryId     String?
+  category       Category?   @relation(fields: [categoryId], references: [id])
+  templeId       String?
+  temple         Temple?     @relation(fields: [templeId], references: [id])
+  festivalId     String? // occasion-linked
+  festival       Festival?   @relation(fields: [festivalId], references: [id])
+  availableFrom  String? // YYYY-MM-DD, for occasion-limited poojas
+  availableTo    String?
+  nextDate       String? // next scheduled date for scheduled online poojas
+  slots          String      @default("[]") // JSON ["06:00","08:00"] for online
+  tags           String      @default("[]")
+  featured       Boolean     @default(false)
+  trending       Boolean     @default(false)
+  active         Boolean     @default(true)
+  requiresPandit Boolean     @default(true)
+  ratingAvg      Float       @default(4.8)
+  ratingCount    Int         @default(0)
+  bookingCount   Int         @default(0)
+  sortOrder      Int         @default(0)
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+
+  packages  ServicePackage[]
+  addons    ServiceAddon[]
+  bookings  Booking[]
+  pandits   PanditService[]
+  reviews   Review[]
+  favorites Favorite[]
+}
+
+model ServicePackage {
+  id             String    @id @default(cuid())
+  serviceId      String
+  service        Service   @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  slug           String // single | couple | family | joint
+  nameEn         String
+  nameHi         String
+  descriptionEn  String?
+  descriptionHi  String?
+  price          Int
+  compareAtPrice Int?
+  maxDevotees    Int       @default(1)
+  featuresEn     String    @default("[]")
+  featuresHi     String    @default("[]")
+  popular        Boolean   @default(false)
+  sortOrder      Int       @default(0)
+  bookings       Booking[]
+}
+
+model ServiceAddon {
+  id        String  @id @default(cuid())
+  serviceId String
+  service   Service @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  slug      String
+  nameEn    String
+  nameHi    String
+  price     Int
+  imageUrl  String?
+}
+
+enum FestivalType {
+  FESTIVAL
+  VRAT
+  EKADASHI
+  PURNIMA
+  AMAVASYA
+  JAYANTI
+  SANKRANTI
+  PRADOSH
+  SPECIAL
+}
+
+model Festival {
+  id               String       @id @default(cuid())
+  slug             String       @unique
+  nameEn           String
+  nameHi           String
+  type             FestivalType @default(FESTIVAL)
+  date             String // YYYY-MM-DD
+  endDate          String?
+  deityEn          String?
+  deityHi          String?
+  descriptionEn    String?
+  descriptionHi    String?
+  significanceEn   String?
+  significanceHi   String?
+  ritualsEn        String       @default("[]")
+  ritualsHi        String       @default("[]")
+  imageUrl         String?
+  major            Boolean      @default(false)
+  remindDaysBefore String       @default("[7,3,1,0]") // JSON number[]
+  pushEnabled      Boolean      @default(true)
+  active           Boolean      @default(true)
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+
+  services Service[]
+}
+
+// ─────────────────────────── Bookings & Payments ───────────────────────────
+
+enum BookingStatus {
+  PENDING_PAYMENT
+  CONFIRMED
+  ASSIGNED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+  REFUNDED
+  FAILED
+}
+
+model Booking {
+  id             String          @id @default(cuid())
+  code           String          @unique // human-friendly e.g. DD-2409-7F3K
+  userId         String
+  user           User            @relation("UserBookings", fields: [userId], references: [id])
+  serviceId      String
+  service        Service         @relation(fields: [serviceId], references: [id])
+  packageId      String?
+  package        ServicePackage? @relation(fields: [packageId], references: [id])
+  panditId       String?
+  pandit         PanditProfile?  @relation("PanditBookings", fields: [panditId], references: [id])
+  templeId       String?
+  temple         Temple?         @relation(fields: [templeId], references: [id])
+  type           ServiceType
+  status         BookingStatus   @default(PENDING_PAYMENT)
+  scheduledDate  String // YYYY-MM-DD
+  scheduledSlot  String? // "08:00"
+  devotees       String          @default("[]") // JSON [{name,gotra,relation}]
+  sankalpNote    String? // wish / intention
+  addons         String          @default("[]") // JSON [{slug,name,price}]
+  addressLine    String?
+  city           String?
+  state          String?
+  pincode        String?
+  prasadDelivery Boolean         @default(false)
+  amountBase     Int
+  amountAddons   Int             @default(0)
+  amountDiscount Int             @default(0)
+  amountTotal    Int
+  currency       String          @default("INR")
+  couponCode     String?
+  liveLink       String? // for online pooja live stream
+  videoUrl       String? // recording after completion
+  photos         String          @default("[]") // JSON string[]
+  panditNote     String?
+  adminNote      String?
+  cancelReason   String?
+  completedAt    DateTime?
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  payment  Payment?
+  review   Review?
+  timeline BookingEvent[]
+}
+
+model BookingEvent {
+  id        String   @id @default(cuid())
+  bookingId String
+  booking   Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  status    String
+  note      String?
+  actorRole String? // USER | PANDIT | ADMIN | SYSTEM
+  createdAt DateTime @default(now())
+}
+
+enum PaymentStatus {
+  CREATED
+  PENDING
+  PAID
+  FAILED
+  REFUNDED
+}
+
+model Payment {
+  id         String        @id @default(cuid())
+  bookingId  String        @unique
+  booking    Booking       @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  provider   String        @default("mock") // mock | razorpay
+  orderId    String?
+  paymentId  String?
+  amount     Int
+  currency   String        @default("INR")
+  status     PaymentStatus @default(CREATED)
+  method     String? // upi | card | netbanking | wallet
+  raw        String? // JSON blob from provider
+  refundId   String?
+  refundedAt DateTime?
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
+}
+
+model Payout {
+  id        String        @id @default(cuid())
+  panditId  String
+  pandit    PanditProfile @relation(fields: [panditId], references: [id])
+  amount    Int
+  status    String        @default("PENDING") // PENDING | PAID
+  reference String?
+  note      String?
+  createdAt DateTime      @default(now())
+  paidAt    DateTime?
+}
+
+model Coupon {
+  id            String  @id @default(cuid())
+  code          String  @unique
+  descriptionEn String?
+  descriptionHi String?
+  discountPct   Int?
+  discountFlat  Int?
+  minAmount     Int     @default(0)
+  maxUses       Int?
+  usedCount     Int     @default(0)
+  validFrom     String?
+  validTo       String?
+  active        Boolean @default(true)
+}
+
+model Review {
+  id        String         @id @default(cuid())
+  bookingId String         @unique
+  booking   Booking        @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User           @relation(fields: [userId], references: [id])
+  serviceId String
+  service   Service        @relation(fields: [serviceId], references: [id])
+  panditId  String?
+  pandit    PanditProfile? @relation(fields: [panditId], references: [id])
+  rating    Int
+  comment   String?
+  approved  Boolean        @default(true)
+  createdAt DateTime       @default(now())
+}
+
+model Favorite {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  serviceId String
+  service   Service  @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, serviceId])
+}
+
+// ─────────────────────────── Astrology consultations ───────────────────────────
+
+model Consultation {
+  id          String         @id @default(cuid())
+  userId      String
+  user        User           @relation("UserConsultations", fields: [userId], references: [id])
+  panditId    String?
+  pandit      PanditProfile? @relation("PanditConsultations", fields: [panditId], references: [id])
+  topic       String // kundli | marriage | career | health | muhurat | vastu
+  question    String?
+  mode        String         @default("chat") // chat | call | video
+  scheduledAt DateTime?
+  status      String         @default("REQUESTED") // REQUESTED | SCHEDULED | COMPLETED | CANCELLED
+  answer      String?
+  meetingLink String?
+  amount      Int            @default(0)
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+}
+
+// ─────────────────────────── Content library ───────────────────────────
+
+enum ContentType {
+  AARTI
+  CHALISA
+  MANTRA
+  STOTRA
+  BHAJAN
+  KATHA
+  ARTICLE
+}
+
+model ContentItem {
+  id        String      @id @default(cuid())
+  slug      String      @unique
+  type      ContentType
+  titleEn   String
+  titleHi   String
+  deityEn   String?
+  deityHi   String?
+  bodyHi    String // Devanagari text
+  bodyEn    String? // transliteration / translation
+  audioUrl  String?
+  imageUrl  String?
+  tags      String      @default("[]")
+  featured  Boolean     @default(false)
+  active    Boolean     @default(true)
+  views     Int         @default(0)
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+}
+
+model Banner {
+  id         String  @id @default(cuid())
+  titleEn    String
+  titleHi    String
+  subtitleEn String?
+  subtitleHi String?
+  imageUrl   String?
+  href       String?
+  placement  String  @default("home") // home | poojas | chadhava
+  sortOrder  Int     @default(0)
+  active     Boolean @default(true)
+  startsAt   String?
+  endsAt     String?
+}
+
+// ─────────────────────────── Notifications ───────────────────────────
+
+enum NotificationType {
+  FESTIVAL_REMINDER
+  BOOKING_UPDATE
+  PROMO
+  SYSTEM
+  KYC
+  PANCHANG
+}
+
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      NotificationType @default(SYSTEM)
+  titleEn   String
+  titleHi   String
+  bodyEn    String?
+  bodyHi    String?
+  href      String?
+  imageUrl  String?
+  read      Boolean          @default(false)
+  pushed    Boolean          @default(false)
+  dedupeKey String? // prevents duplicate reminders
+  createdAt DateTime         @default(now())
+
+  @@unique([userId, dedupeKey])
+  @@index([userId, read])
+}
+
+model PushSubscription {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  userAgent String?
+  createdAt DateTime @default(now())
+}
+
+/// Admin-authored broadcast campaigns
+model Campaign {
+  id          String    @id @default(cuid())
+  titleEn     String
+  titleHi     String
+  bodyEn      String?
+  bodyHi      String?
+  href        String?
+  imageUrl    String?
+  audience    String    @default("ALL") // ALL | USERS | PANDITS | CITY:<name> | ONBOARDED
+  scheduledAt DateTime?
+  sentAt      DateTime?
+  sentCount   Int       @default(0)
+  status      String    @default("DRAFT") // DRAFT | SCHEDULED | SENT
+  createdAt   DateTime  @default(now())
+}
+
+// ─────────────────────────── Platform ───────────────────────────
+
+model Setting {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  actorId   String?
+  actor     User?    @relation(fields: [actorId], references: [id])
+  action    String // e.g. "pandit.kyc.approve"
+  entity    String?
+  entityId  String?
+  meta      String? // JSON
+  createdAt DateTime @default(now())
+
+  @@index([entity, entityId])
+}
