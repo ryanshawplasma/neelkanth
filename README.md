@@ -1,36 +1,60 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# DivyaDham (दिव्यधाम)
 
-## Getting Started
+A Sri-Mandir-style temple services platform: online poojas performed at famous temples (with live link + video),
+chadhava offerings, pandit-at-home rituals, astrology consultations, prasad delivery, daily panchang,
+a festival calendar with push reminders, an aarti/chalisa library, a pandit portal with KYC, and a full admin console.
+UI in **English and Hindi**.
 
-First, run the development server:
+## Quick start
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm run setup     # install deps, generate Prisma client, create SQLite DB, seed demo data + artwork
+npm run dev       # http://localhost:3000
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+| Who | Where | Login |
+|---|---|---|
+| Devotee app | http://localhost:3000 | any 10-digit mobile, OTP `123456` |
+| Seeded devotee | same | `9111111111` (Ramesh Kumar, has bookings) |
+| Pandit portal | http://localhost:3000/pandit/login | `9000000001` … `9000000006`, OTP `123456` |
+| Admin console | http://localhost:3000/admin/login | `admin@divyadham.app` / `Admin@123` |
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+The OTP is fixed in development (`OTP_DEV_CODE` in `.env`) and also printed to the server console.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## What's inside
 
-## Learn More
+- **Devotee app** (mobile-first PWA): home with today's panchang + festival countdowns, pooja/chadhava/prasad catalog,
+  service detail with packages & add-ons, checkout (devotees + gotra, date/slot, address, coupon), mock payment gateway,
+  booking tracking with timeline / live link / video, temples with live darshan, full panchang (tithi, nakshatra, yoga,
+  karana, rahu kaal, abhijit …), festival calendar, aarti/chalisa/mantra reader, pandit directory, astrology consults,
+  onboarding, notifications, favourites, family members.
+- **Pandit portal**: OTP login, registration with classification (Vedic, Purohit, Jyotishi, Karmakandi, Shakta, Vastu,
+  Kathavachak) & specialities, KYC (Aadhaar/PAN/photo/certificates/bank), dashboard, bookings (set live link, start,
+  complete with video + photos), services offered, weekly availability & blocked dates, earnings & payouts, reviews.
+- **Admin console**: overview KPIs, bookings (assign pandit, status, refunds), pandit KYC review, users, services editor
+  (bilingual, packages, add-ons, images), categories, temples, festivals (reminder offsets, send now), content library,
+  banners, coupons, notifications/campaigns, payments, payouts, reviews, consultations, settings, audit log.
+- **Reminders**: festival "near-date" pushes (7/3/1/0 days before by default), booking reminders, scheduled campaigns —
+  run every 30 min in dev and via `GET /api/cron/reminders?secret=…` in production.
 
-To learn more about Next.js, take a look at the following resources:
+See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for conventions and module map.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Scripts
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+| Script | Purpose |
+|---|---|
+| `npm run dev` | dev server on :3000 |
+| `npm run build && npm start` | production build |
+| `npm run db:push` | apply schema to the SQLite DB |
+| `npm run db:seed` | (re)seed demo data — idempotent |
+| `npm run db:reset` | wipe DB and reseed |
+| `npx tsx scripts/generate-art.ts` | regenerate SVG artwork + PWA icons |
+| `npm run typecheck` | `tsc --noEmit` |
 
-## Deploy on Vercel
+## Production notes
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- Set a strong `AUTH_SECRET`, `CRON_SECRET`; generate VAPID keys with `npx web-push generate-vapid-keys` to enable web push.
+- Switch `PAYMENT_PROVIDER=razorpay` and add keys; the provider abstraction is in `src/lib/payments.ts`.
+- Wire an SMS gateway in `src/lib/otp.ts` (`deliver()`).
+- For Postgres, change `provider` in `prisma/schema.prisma` and `DATABASE_URL`.
+- Uploads go to `public/uploads`; replace `store()` in `src/app/api/upload/route.ts` with S3/Cloudinary.

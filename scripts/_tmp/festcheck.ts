@@ -1,0 +1,12 @@
+import { MAJOR_FESTIVALS, generateRecurringObservances } from "@/data/festivals";
+const obs = generateRecurringObservances("2026-09-01", "2027-12-31");
+console.log("major:", MAJOR_FESTIVALS.length, "observances:", obs.length);
+const byType: Record<string, number> = {};
+for (const o of obs) byType[o.type] = (byType[o.type] ?? 0) + 1;
+console.log(byType);
+console.log(obs.filter(o=>o.type==="EKADASHI").slice(0,8).map(o=>`${o.date} ${o.nameEn}`).join("\n"));
+console.log("---");
+console.log(obs.filter(o=>o.type==="PURNIMA").slice(0,5).map(o=>`${o.date} ${o.nameEn}`).join("\n"));
+console.log("--- dupes:", new Set(obs.map(o=>o.slug)).size, "vs", obs.length);
+const all = [...MAJOR_FESTIVALS.map(f=>f.slug), ...obs.map(o=>o.slug)];
+console.log("total slugs", all.length, "unique", new Set(all).size);
