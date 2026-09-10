@@ -30,14 +30,14 @@ export async function middleware(req: NextRequest) {
     return NextResponse.redirect(url);
   };
 
-  if (pathname.startsWith("/admin")) {
+  if (pathname === "/admin" || pathname.startsWith("/admin/")) {
     if (ADMIN_PUBLIC.some((p) => pathname.startsWith(p))) return NextResponse.next();
     if (!session) return redirectTo("/admin/login");
     if (session.role !== "ADMIN") return NextResponse.redirect(new URL("/", req.url));
     return NextResponse.next();
   }
 
-  if (pathname.startsWith("/pandit")) {
+  if (pathname === "/pandit" || pathname.startsWith("/pandit/")) {
     if (PANDIT_PUBLIC.some((p) => pathname.startsWith(p))) return NextResponse.next();
     if (!session) return redirectTo("/pandit/login");
     if (session.role !== "PANDIT" && session.role !== "ADMIN") {
