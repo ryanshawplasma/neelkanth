@@ -55,8 +55,8 @@
   --color-danger-soft: var(--danger-soft);
   --color-info: var(--info);
   --color-info-soft: var(--info-soft);
-  --font-sans: var(--font-sans), "Noto Sans Devanagari", system-ui, sans-serif;
-  --font-display: var(--font-display), var(--font-sans), serif;
+  --font-sans: "Poppins", "Noto Sans Devanagari", "Nirmala UI", "Segoe UI", system-ui, sans-serif;
+  --font-display: "Playfair Display", Georgia, "Times New Roman", serif;
   --radius-card: var(--radius);
   --shadow-card: var(--shadow);
 }
@@ -147,6 +147,7 @@ body {
 
 /* Devanagari renders taller; nudge line-height on hi locale */
 html[lang="hi"] body {
+  font-family: "Noto Sans Devanagari", "Nirmala UI", "Poppins", "Segoe UI", system-ui, sans-serif;
   line-height: 1.6;
 }
 
