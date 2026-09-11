@@ -4,9 +4,29 @@ import { db, datasourceUrl } from "@/lib/db";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+const EXPECTED_ENV = [
+  "DATABASE_URL",
+  "AUTH_SECRET",
+  "CRON_SECRET",
+  "NEXT_PUBLIC_APP_URL",
+  "NEXT_PUBLIC_VAPID_PUBLIC_KEY",
+  "VAPID_PRIVATE_KEY",
+  "VAPID_SUBJECT",
+  "SMS_PROVIDER",
+  "RENFLAIR_API_KEY",
+  "PAYMENT_PROVIDER",
+  "BLOB_READ_WRITE_TOKEN",
+  "ADMIN_EMAIL",
+  "ADMIN_PASSWORD",
+] as const;
+
+/** Mask anything that looks like credentials inside a URL. */
+const mask = (s: string) => s.replace(/(\/\/[^:/@\s]+:)[^@\s]*@/g, "$1***@");
+
 /**
  * GET /api/health — deployment self-check (no secrets are returned).
- * Reports whether the database is reachable and seeded, plus which optional services are configured.
+ * Reports whether the database is reachable and seeded, which optional services are configured,
+ * and which expected environment variables are present (names only, plus their length).
  */
 export async function GET() {
   const url = datasourceUrl() ?? "";
@@ -19,8 +39,16 @@ export async function GET() {
     database = { ok: true, services, users, festivals };
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
-    database = { ok: false, error: message.replace(/\/\/[^@]*@/g, "//***@").split("\n").slice(0, 3).join(" ").slice(0, 400) };
+    const lines = message.split("\n").map((l) => l.trim()).filter(Boolean);
+    database = { ok: false, error: mask(lines.slice(-6).join(" | ")).slice(0, 700) };
   }
+
+  const env = Object.fromEntries(
+    EXPECTED_ENV.map((k) => {
+      const v = process.env[k];
+      return [k, v === undefined ? "missing" : v.length === 0 ? "empty" : `set (${v.length} chars${/^["']/.test(v) ? ", starts with a quote" : ""})`];
+    }),
+  );
 
   return NextResponse.json(
     {
@@ -33,6 +61,7 @@ export async function GET() {
       uploads: process.env.BLOB_READ_WRITE_TOKEN ? "vercel-blob" : process.env.VERCEL ? "unconfigured" : "local-disk",
       cron: Boolean(process.env.CRON_SECRET),
       region: process.env.VERCEL_REGION ?? null,
+      env,
     },
     { status: database.ok ? 200 : 503 },
   );
