@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
 import { db } from "./db";
 import { audit, createSession, destroySession, getSession, normalizePhone } from "./auth";
-import { requestOtp, verifyOtp } from "./otp";
+import { OtpDeliveryError, requestOtp, verifyOtp } from "./otp";
 import { LOCALE_COOKIE, isLocale } from "@/i18n/config";
 
 export type ActionResult<T = undefined> = { ok: true; data?: T } | { ok: false; error: string };
@@ -16,8 +16,13 @@ export async function requestOtpAction(phoneInput: string): Promise<ActionResult
   if (!phone) return { ok: false, error: "invalidPhone" };
   const blocked = await db.user.findUnique({ where: { phone }, select: { isBlocked: true } });
   if (blocked?.isBlocked) return { ok: false, error: "blocked" };
-  const r = await requestOtp(phone);
-  return { ok: true, data: { target: phone, devHint: r.devHint } };
+  try {
+    const r = await requestOtp(phone);
+    return { ok: true, data: { target: phone, devHint: r.devHint } };
+  } catch (e) {
+    if (e instanceof OtpDeliveryError) return { ok: false, error: "smsFailed" };
+    throw e;
+  }
 }
 
 /**

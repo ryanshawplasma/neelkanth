@@ -27,7 +27,7 @@ export function LoginForm({ next }: { next: string }) {
   const boxes = useRef<(HTMLInputElement | null)[]>([]);
 
   const authError = (code: string) =>
-    t(["invalidPhone", "invalidOtp", "otpExpired"].includes(code) ? `common.${code}` : "common.somethingWrong");
+    t(["invalidPhone", "invalidOtp", "otpExpired", "smsFailed", "blocked"].includes(code) ? `common.${code}` : "common.somethingWrong");
 
   useEffect(() => {
     if (seconds <= 0) return;
