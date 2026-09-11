@@ -60,10 +60,18 @@ The GitHub repo is connected to Vercel (neelkanth-alpha.vercel.app). A serverles
 local uploads folder, or the in-process scheduler, so the app switches to hosted services when their variables exist:
 
 1. **Database** — in the Vercel project open *Storage → Create Database → Postgres (Neon)* and connect it to the
-   project. That adds `DATABASE_URL`. Any Postgres works (Neon, Supabase, Railway): the build picks the Prisma provider
-   from the URL, runs `prisma db push`, and, when `SEED_ON_BUILD=1` is set, seeds the catalog, festivals, library and
-   demo accounts. Set `SEED_ON_BUILD=1` for the first deploy, then remove it so later deploys never overwrite edits made
-   in the admin console.
+   project. That adds `DATABASE_URL`. Any Postgres works (Neon, Supabase, Railway). For Supabase use the **Session pooler**
+   URI (port 5432, IPv4-friendly) and URL-encode special characters in the password (`@` → `%40`). Create the tables and
+   demo data from your machine once:
+
+   ```bash
+   DATABASE_URL="postgresql://…" npm run db:push
+   DATABASE_URL="postgresql://…" npm run db:seed
+   ```
+
+   (Alternatively set `SEED_ON_BUILD=1` for one deploy: the build then pushes the schema and seeds, but it also
+   overwrites catalog rows edited in the admin console, so remove it afterwards. `DB_PUSH_ON_BUILD=1` pushes the schema
+   without seeding.)
 2. **Uploads** — *Storage → Create → Blob* adds `BLOB_READ_WRITE_TOKEN`; service images, pandit photos and KYC documents
    are then stored in Vercel Blob (local disk is only used in dev / on a VPS).
 3. **Reminders** — `vercel.json` schedules `/api/cron/reminders` daily at 07:00 IST. Vercel authenticates the call with
@@ -81,9 +89,10 @@ Environment variables (*Settings → Environment Variables*, Production):
 | `NEXT_PUBLIC_APP_URL` | `https://neelkanth-alpha.vercel.app` |
 | `NEXT_PUBLIC_VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` | web push (`npx web-push generate-vapid-keys`) |
 | `SMS_PROVIDER`, `RENFLAIR_API_KEY` | `renflair` + your key for real OTP SMS; leave unset to keep the fixed dev OTP |
-| `SEED_ON_BUILD` | `1` for the first deploy only |
+| `SEED_ON_BUILD` / `DB_PUSH_ON_BUILD` | optional, see above |
 
-Then *Deployments → Redeploy*. `/admin` → Notifications shows the reminder engine, `/admin/settings` shows the
+Set the function region to Mumbai (*Settings → Functions → Function Region → bom1*) so it sits next to a Supabase
+ap-south-1 database. Then *Deployments → Redeploy*. `/admin` → Notifications shows the reminder engine, `/admin/settings` shows the
 environment card (payment provider, push, OTP mode).
 
 ## Production notes
