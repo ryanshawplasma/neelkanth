@@ -357,7 +357,9 @@ export const admin = {
     trendingHint: "Show in trending",
     ratingAvg: "Rating average",
     ratingCount: "Rating count",
-    bookingCountInfo: "{n} bookings",
+    bookingCount: "Displayed bookings",
+    bookingCountHint: "The booked number shown on cards; it grows by one with every paid booking.",
+    bookingCountInfo: "{n} real paid bookings recorded on this service",
     preview: "Preview",
 
     // ── Categories ──
@@ -958,7 +960,9 @@ export const admin = {
     trendingHint: "लोकप्रिय में दिखाएँ",
     ratingAvg: "औसत रेटिंग",
     ratingCount: "रेटिंग संख्या",
-    bookingCountInfo: "{n} बुकिंग",
+    bookingCount: "दिखाई जाने वाली बुकिंग संख्या",
+    bookingCountHint: "कार्ड पर दिखने वाली बुक-हुए संख्या; हर सफल भुगतान पर एक बढ़ती है।",
+    bookingCountInfo: "इस सेवा पर {n} वास्तविक भुगतान वाली बुकिंग दर्ज हैं",
     preview: "पूर्वावलोकन",
 
     // ── Categories ──

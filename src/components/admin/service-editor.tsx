@@ -21,7 +21,7 @@ import { AddonsEditor, PackagesEditor, type AddonDraft, type PackageDraft } from
 import { tErr } from "./action-button";
 
 export type ServiceEditorProps = {
-  service: (ServiceInput & { id: string; bookingCount: number }) | null;
+  service: (ServiceInput & { id: string; realBookings: number }) | null;
   categories: { id: string; nameEn: string; nameHi: string }[];
   temples: { id: string; nameEn: string; nameHi: string; city: string }[];
   festivals: { id: string; nameEn: string; nameHi: string; date: string }[];
@@ -64,6 +64,7 @@ const emptyForm: ServiceInput = {
   requiresPandit: true,
   ratingAvg: 4.8,
   ratingCount: 0,
+  bookingCount: 0,
   sortOrder: 0,
   packages: [],
   addons: [],
@@ -340,7 +341,7 @@ export function ServiceEditor({ service, categories, temples, festivals }: Servi
             <Checkbox checked={!!form.active} onChange={(e) => set("active", e.target.checked)} label={t("admin.activeHint")} />
             <Checkbox checked={!!form.featured} onChange={(e) => set("featured", e.target.checked)} label={t("admin.featuredHint")} />
             <Checkbox checked={!!form.trending} onChange={(e) => set("trending", e.target.checked)} label={t("admin.trendingHint")} />
-            <div className="grid gap-3 sm:grid-cols-3">
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
               <Field label={t("admin.sortOrder")}>
                 <Input type="number" value={form.sortOrder ?? 0} onChange={(e) => set("sortOrder", Number(e.target.value))} />
               </Field>
@@ -350,9 +351,12 @@ export function ServiceEditor({ service, categories, temples, festivals }: Servi
               <Field label={t("admin.ratingCount")}>
                 <Input type="number" min={0} value={form.ratingCount ?? 0} onChange={(e) => set("ratingCount", Number(e.target.value))} />
               </Field>
+              <Field label={t("admin.bookingCount")} hint={t("admin.bookingCountHint")}>
+                <Input type="number" min={0} value={form.bookingCount ?? 0} onChange={(e) => set("bookingCount", Number(e.target.value))} />
+              </Field>
             </div>
             {service && (
-              <p className="text-xs text-muted">{t("admin.bookingCountInfo", { n: service.bookingCount })}</p>
+              <p className="text-xs text-muted">{t("admin.bookingCountInfo", { n: service.realBookings })}</p>
             )}
           </div>
         </Panel>

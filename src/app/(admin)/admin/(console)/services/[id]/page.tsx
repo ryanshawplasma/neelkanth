@@ -18,9 +18,10 @@ export default async function AdminEditServicePage({ params }: { params: Promise
   const { service, categories, temples, festivals } = await getServiceEditorData(id);
   if (!service) notFound();
 
-  const initial: ServiceInput & { id: string; bookingCount: number } = {
+  const initial: ServiceInput & { id: string; realBookings: number } = {
     id: service.id,
-    bookingCount: service._count.bookings,
+    realBookings: service._count.bookings,
+    bookingCount: service.bookingCount,
     slug: service.slug,
     type: service.type,
     nameEn: service.nameEn,

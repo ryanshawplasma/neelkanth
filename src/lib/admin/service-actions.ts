@@ -73,6 +73,7 @@ const serviceSchema = z.object({
   requiresPandit: z.boolean().default(true),
   ratingAvg: z.number().min(0).max(5).default(4.8),
   ratingCount: z.number().int().min(0).default(0),
+  bookingCount: z.number().int().min(0).default(0),
   sortOrder: z.number().int().min(0).max(9999).default(0),
   packages: z.array(packageSchema).max(8).default([]),
   addons: z.array(addonSchema).max(12).default([]),
@@ -135,6 +136,7 @@ export async function saveServiceAction(input: ServiceInput): Promise<Result> {
     requiresPandit: d.requiresPandit,
     ratingAvg: d.ratingAvg,
     ratingCount: d.ratingCount,
+    bookingCount: d.bookingCount,
     sortOrder: d.sortOrder,
   };
 
