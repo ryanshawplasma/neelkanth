@@ -5,6 +5,8 @@
  *
  *   file:…            → sqlite
  *   postgres(ql)://…  → postgresql
+ *
+ * It never fails the build: an unrecognised or missing URL just leaves the schema as it is.
  */
 import { readFileSync, writeFileSync, existsSync } from "node:fs";
 import path from "node:path";
@@ -12,26 +14,28 @@ import path from "node:path";
 const root = path.resolve(path.dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, "$1")), "..");
 const schemaPath = path.join(root, "prisma", "schema.prisma");
 
+const unquote = (v) => String(v ?? "").trim().replace(/^["'](.*)["']$/s, "$1").trim();
+
 function loadEnv() {
-  if (process.env.DATABASE_URL) return;
+  if (unquote(process.env.DATABASE_URL)) return;
   for (const f of [".env.local", ".env"]) {
     const p = path.join(root, f);
     if (!existsSync(p)) continue;
     for (const line of readFileSync(p, "utf8").split("\n")) {
       const m = line.match(/^\s*([A-Z0-9_]+)\s*=\s*(.*)\s*$/);
       if (!m) continue;
-      const v = m[2].replace(/^"(.*)"$/, "$1").replace(/^'(.*)'$/, "$1");
-      if (process.env[m[1]] === undefined) process.env[m[1]] = v;
+      if (!process.env[m[1]]) process.env[m[1]] = unquote(m[2]);
     }
   }
 }
 
 loadEnv();
-const url = process.env.DATABASE_URL ?? "file:./dev.db";
-const provider = /^postgres(ql)?:\/\//i.test(url) ? "postgresql" : url.startsWith("file:") ? "sqlite" : null;
+const url = unquote(process.env.DATABASE_URL);
+const provider = /^postgres(ql)?:\/\//i.test(url) ? "postgresql" : /^file:/i.test(url) ? "sqlite" : null;
+
 if (!provider) {
-  console.error(`[prisma-provider] Unsupported DATABASE_URL scheme: ${url.split(":")[0]}`);
-  process.exit(1);
+  console.warn(`[prisma-provider] DATABASE_URL is ${url ? `an unsupported scheme (${url.split(":")[0]})` : "not set"}; leaving schema.prisma unchanged.`);
+  process.exit(0);
 }
 
 const schema = readFileSync(schemaPath, "utf8");
