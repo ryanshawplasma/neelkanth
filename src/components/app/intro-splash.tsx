@@ -8,8 +8,10 @@ import { cn } from "@/lib/utils";
 const SEEN_KEY = "dd_intro_seen";
 /** Set once the intro has ever played on this device; the very first play cannot be skipped. */
 const PLAYED_KEY = "dd_intro_played";
-const VIDEO_SRC = "/video/intro.mp4";
-const POSTER_SRC = "/video/intro-poster.jpg";
+/** Bump when the intro footage is replaced, so cached copies of the old clip are not reused. */
+const VIDEO_VERSION = "3";
+const VIDEO_SRC = `/video/intro.mp4?v=${VIDEO_VERSION}`;
+const POSTER_SRC = `/video/intro-poster.jpg?v=${VIDEO_VERSION}`;
 /** Never hold the user hostage: if the video cannot start within this time, drop the overlay. */
 const START_TIMEOUT_MS = 6000;
 /** Hard ceiling in case `ended` never fires (some in-app browsers). */
