@@ -45,3 +45,6 @@ next-env.d.ts
 # local db & uploads
 prisma/dev.db*
 public/uploads/
+
+# keep the env template
+!.env.example
