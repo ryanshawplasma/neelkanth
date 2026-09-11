@@ -4,19 +4,22 @@
   "private": true,
   "scripts": {
     "dev": "next dev -p 3000",
-    "build": "prisma generate && next build",
+    "build": "node scripts/build.mjs",
     "start": "next start -p 3000",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
-    "db:push": "prisma db push",
-    "db:seed": "tsx prisma/seed.ts",
-    "db:reset": "prisma db push --force-reset && tsx prisma/seed.ts",
-    "db:studio": "prisma studio",
+    "db:push": "node scripts/prisma-provider.mjs && prisma db push",
+    "db:seed": "node scripts/prisma-provider.mjs && tsx prisma/seed.ts",
+    "db:reset": "node scripts/prisma-provider.mjs && prisma db push --force-reset && tsx prisma/seed.ts",
+    "db:studio": "node scripts/prisma-provider.mjs && prisma studio",
     "cron:reminders": "tsx scripts/run-reminders.ts",
-    "setup": "npm install && prisma generate && prisma db push && tsx prisma/seed.ts"
+    "setup": "npm install && npm run db:push && npm run db:seed",
+    "prisma:prepare": "node scripts/prisma-provider.mjs",
+    "postinstall": "node scripts/prisma-provider.mjs && prisma generate"
   },
   "dependencies": {
     "@prisma/client": "6.19.3",
+    "@vercel/blob": "^2.8.0",
     "bcryptjs": "^3.0.3",
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",

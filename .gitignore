@@ -48,3 +48,6 @@ public/uploads/
 
 # keep the env template
 !.env.example
+
+# demo assets referenced by the seed must ship with the repo
+!public/uploads/demo/
