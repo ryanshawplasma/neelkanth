@@ -9,13 +9,15 @@ const SEEN_KEY = "dd_intro_seen";
 /** Set once the intro has ever played on this device; the very first play cannot be skipped. */
 const PLAYED_KEY = "dd_intro_played";
 /** Bump when the intro footage is replaced, so cached copies of the old clip are not reused. */
-const VIDEO_VERSION = "3";
+const VIDEO_VERSION = "4";
 const VIDEO_SRC = `/video/intro.mp4?v=${VIDEO_VERSION}`;
 const POSTER_SRC = `/video/intro-poster.jpg?v=${VIDEO_VERSION}`;
 /** Never hold the user hostage: if the video cannot start within this time, drop the overlay. */
 const START_TIMEOUT_MS = 6000;
+/** Give up if playback stalls mid-way (slow connection) rather than freezing on one frame. */
+const STALL_TIMEOUT_MS = 5000;
 /** Hard ceiling in case `ended` never fires (some in-app browsers). */
-const MAX_PLAY_MS = 14000;
+const MAX_PLAY_MS = 16000;
 
 /**
  * Full-screen opening video, shown once per browser session when the app is opened.
@@ -24,9 +26,11 @@ const MAX_PLAY_MS = 14000;
  * - An inline script hides the overlay before first paint on repeat loads, so returning visitors
  *   never see a flash of black.
  * - Plays muted (the only way autoplay is allowed); a button un-mutes.
- * - The file is a portrait (9:19.5) render: the scene's centre over a blurred self-fill, so
- *   `object-cover` fills any phone edge to edge without cutting the subjects.
- * - Skipped automatically for reduced-motion users, when the file fails to load, or on timeout.
+ * - The file is a native 9:16 portrait render and `object-cover` fills the screen edge to edge:
+ *   taller phones trim a little from the sides, where there is nothing but sky and stars.
+ * - Skipped automatically for reduced-motion users, when the file fails to load, on a stall,
+ *   or on timeout. While the tab is hidden the browser suspends playback, so the countdown is
+ *   held and the video is resumed when the tab comes back.
  */
 export function IntroSplash() {
   const t = useT();
@@ -48,8 +52,9 @@ export function IntroSplash() {
     }
     try {
       sessionStorage.setItem(SEEN_KEY, "1");
+      // PLAYED_KEY is only written once the video has actually finished, so an intro that never
+      // got to play (backgrounded tab, dead connection) still counts as "not seen yet".
       setFirstTime(localStorage.getItem(PLAYED_KEY) !== "1");
-      localStorage.setItem(PLAYED_KEY, "1");
     } catch {}
     setPhase("playing");
   }, []);
@@ -60,31 +65,75 @@ export function IntroSplash() {
     if (!v) return;
 
     const finish = () => setPhase((p) => (p === "playing" ? "closing" : p));
+    const onEnded = () => {
+      try {
+        localStorage.setItem(PLAYED_KEY, "1");
+      } catch {}
+      finish();
+    };
+
     let started = false;
+    const timers = new Set<number>();
+    const after = (ms: number, fn: () => void) => {
+      const id = window.setTimeout(fn, ms);
+      timers.add(id);
+      return id;
+    };
+    const clearAll = () => {
+      timers.forEach((id) => window.clearTimeout(id));
+      timers.clear();
+    };
+
+    /**
+     * Arm a deadline for the overlay. Re-armed on every playback event, and dropped entirely
+     * while the tab is hidden, since a hidden tab cannot play video and the user is not looking.
+     */
+    const arm = () => {
+      clearAll();
+      if (document.hidden) return;
+      after(MAX_PLAY_MS, finish);
+      if (!started) after(START_TIMEOUT_MS, finish);
+      if (!controls) after(1500, () => setControls(true));
+    };
+
     const onPlaying = () => {
       started = true;
-      window.clearTimeout(startTimer);
+      arm();
     };
-    const startTimer = window.setTimeout(() => {
-      if (!started) finish();
-    }, START_TIMEOUT_MS);
-    const maxTimer = window.setTimeout(finish, MAX_PLAY_MS);
-    const controlsTimer = window.setTimeout(() => setControls(true), 1500);
+    const onStalled = () => {
+      // Slow connection: wait a little, then give up rather than sit on a frozen frame.
+      if (started) after(STALL_TIMEOUT_MS, finish);
+    };
+    const onVisibility = () => {
+      arm();
+      if (!document.hidden) v.play().catch(() => {});
+    };
 
     v.addEventListener("playing", onPlaying);
-    v.addEventListener("ended", finish);
+    v.addEventListener("waiting", onStalled);
+    v.addEventListener("stalled", onStalled);
+    v.addEventListener("ended", onEnded);
     v.addEventListener("error", finish);
+    document.addEventListener("visibilitychange", onVisibility);
+
+    arm();
     v.muted = true;
-    v.play().catch(finish);
+    // A rejected play() in a hidden tab is not a failure: retry when the tab is shown again.
+    v.play().catch(() => {
+      if (!document.hidden) finish();
+    });
 
     return () => {
-      window.clearTimeout(startTimer);
-      window.clearTimeout(maxTimer);
-      window.clearTimeout(controlsTimer);
+      clearAll();
       v.removeEventListener("playing", onPlaying);
-      v.removeEventListener("ended", finish);
+      v.removeEventListener("waiting", onStalled);
+      v.removeEventListener("stalled", onStalled);
+      v.removeEventListener("ended", onEnded);
       v.removeEventListener("error", finish);
+      document.removeEventListener("visibilitychange", onVisibility);
     };
+    // `controls` is read only to avoid re-arming a timer that already fired; it must not re-run this.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase]);
 
   // Lock page scroll while the overlay is up; unmount after the fade-out.
