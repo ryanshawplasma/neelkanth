@@ -55,8 +55,10 @@ See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for conventions and module ma
 
 ## Production notes
 
-- Set a strong `AUTH_SECRET`, `CRON_SECRET`; generate VAPID keys with `npx web-push generate-vapid-keys` to enable web push.
+- Set a strong `AUTH_SECRET` and `CRON_SECRET`.
+- **Push notifications**: VAPID keys go in `NEXT_PUBLIC_VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` (generate with `npx web-push generate-vapid-keys`). Users tap *Enable notifications* on the home screen or in Account; festival, booking and campaign notifications are then delivered as web push in addition to the in-app inbox. Web push needs HTTPS (or localhost) and a browser that allows the permission prompt.
+- **OTP SMS via Renflair**: set `SMS_PROVIDER=renflair`, `RENFLAIR_API_KEY=<your key>` and optionally `RENFLAIR_CHANNEL=voice` for voice-call OTPs. A random 6-digit OTP is then sent through Renflair's gateway and the dev hint disappears. With `SMS_PROVIDER=console` (default) the OTP is fixed to `OTP_DEV_CODE` and printed to the server console.
 - Switch `PAYMENT_PROVIDER=razorpay` and add keys; the provider abstraction is in `src/lib/payments.ts`.
-- Wire an SMS gateway in `src/lib/otp.ts` (`deliver()`).
+- Other SMS gateways: add a provider next to Renflair in `src/lib/otp.ts`.
 - For Postgres, change `provider` in `prisma/schema.prisma` and `DATABASE_URL`.
 - Uploads go to `public/uploads`; replace `store()` in `src/app/api/upload/route.ts` with S3/Cloudinary.
