@@ -21,7 +21,10 @@ export function datasourceUrl() {
       u.port = "6543";
       u.searchParams.set("pgbouncer", "true");
     }
-    if (!u.searchParams.has("connection_limit")) u.searchParams.set("connection_limit", "1");
+    // A few parallel connections per function instance: pages fan out ~10 queries, and with the
+    // transaction pooler in front the per-instance cap can be higher than the usual "1".
+    if (!u.searchParams.has("connection_limit")) u.searchParams.set("connection_limit", "5");
+    if (!u.searchParams.has("pool_timeout")) u.searchParams.set("pool_timeout", "20");
     if (u.hostname.endsWith(".supabase.com") && !u.searchParams.has("sslmode")) u.searchParams.set("sslmode", "require");
     return u.toString();
   } catch {

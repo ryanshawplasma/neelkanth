@@ -25,3 +25,6 @@ export default async function PanditPortalLayout({ children }: { children: React
     </>
   );
 }
+
+/** Vercel: allow slow cold starts + cross-region DB round-trips (default limit is 10s). */
+export const maxDuration = 30;
