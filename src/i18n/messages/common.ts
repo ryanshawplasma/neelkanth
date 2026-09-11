@@ -5,6 +5,9 @@
 export const common = {
   en: {
     appName: "DivyaDham",
+    introSkip: "Skip",
+    introSoundOn: "Tap for sound",
+    introSoundOff: "Mute",
     tagline: "Your temple, wherever you are",
     home: "Home",
     poojas: "Poojas",
@@ -194,6 +197,9 @@ export const common = {
   },
   hi: {
     appName: "दिव्यधाम",
+    introSkip: "छोड़ें",
+    introSoundOn: "आवाज़ चालू करें",
+    introSoundOff: "म्यूट",
     tagline: "आपका मंदिर, जहाँ भी आप हों",
     home: "होम",
     poojas: "पूजा",

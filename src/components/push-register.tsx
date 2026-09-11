@@ -15,7 +15,14 @@ function urlBase64ToUint8Array(base64String: string) {
 /** Registers the service worker on mount (call once in the app shell). */
 export function ServiceWorkerRegistrar() {
   useEffect(() => {
-    if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js").catch(() => {});
+    if (!("serviceWorker" in navigator)) return;
+    if (process.env.NODE_ENV !== "production") {
+      // Dev chunks are not content-hashed, so the cache-first worker would keep serving stale code.
+      navigator.serviceWorker.getRegistrations().then((rs) => rs.forEach((r) => r.unregister())).catch(() => {});
+      if ("caches" in window) caches.keys().then((ks) => ks.forEach((k) => caches.delete(k))).catch(() => {});
+      return;
+    }
+    navigator.serviceWorker.register("/sw.js").catch(() => {});
   }, []);
   return null;
 }
