@@ -8,6 +8,8 @@ import { EmptyState } from "@/components/ui/misc";
 import { LanguageSwitch } from "@/components/ui/language-switch";
 import { AccountView, type AccountUser } from "@/components/app/account-view";
 import type { ServiceCardData } from "@/lib/app/types";
+import { formatPhone } from "@/lib/account-types";
+import { getSupportUnreadForUser } from "@/lib/support";
 
 export const dynamic = "force-dynamic";
 
@@ -51,7 +53,8 @@ export default async function AccountPage() {
     );
   }
 
-  const [family, favorites] = await Promise.all([listFamilyMembers(user.id), getFavoriteServices(user.id)]);
+  const [family, favorites, supportUnread] = await Promise.all([listFamilyMembers(user.id), getFavoriteServices(user.id), getSupportUnreadForUser(user.id)]);
+  const detail = formatPhone(user.phone) ?? user.email;
 
   return (
     <div>
@@ -77,6 +80,15 @@ export default async function AccountPage() {
             role: user.role,
           } satisfies AccountUser
         }
+        account={{
+          id: user.id,
+          name: user.name || user.pandit?.displayName || detail || "",
+          detail,
+          role: user.role,
+          avatarUrl: user.avatarUrl ?? user.pandit?.photoUrl ?? null,
+          hasPanditProfile: !!user.pandit,
+        }}
+        supportUnread={supportUnread}
         family={family.map((f) => ({ id: f.id, name: f.name, relation: f.relation, gotra: f.gotra, dob: f.dob }))}
         favorites={favorites as ServiceCardData[]}
       />

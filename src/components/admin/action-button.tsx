@@ -11,6 +11,13 @@ import type { TFunction } from "@/i18n";
 
 export type ActionResult = { ok: boolean; error?: string } | void;
 
+/**
+ * className for admin form sheets. They use the Sheet's default "bottom" side — a bottom sheet
+ * on phones, the same centred dialog as side="center" from sm up — and this keeps their last
+ * control clear of the phone's home indicator.
+ */
+export const PHONE_SHEET = "max-sm:pb-[env(safe-area-inset-bottom)]";
+
 /** Errors come back as dictionary keys ("admin.errX") or plain sentences. */
 export function tErr(t: TFunction, error?: string) {
   if (!error) return t("common.somethingWrong");

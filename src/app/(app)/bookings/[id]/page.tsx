@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { CalendarDays, Clock3, FileText, MapPin, Phone, Radio, Users } from "lucide-react";
+import { CalendarDays, ChevronRight, Clock3, FileText, MapPin, MessageCircle, Phone, Radio, Users } from "lucide-react";
 import { getT } from "@/i18n/server";
 import { getCurrentUser } from "@/lib/auth";
 import { getBooking } from "@/lib/app/queries";
@@ -297,6 +297,21 @@ export default async function BookingDetailPage({
             </ol>
           </section>
         )}
+
+        {/* help */}
+        <Link
+          href={`/support?booking=${b.id}`}
+          className="flex items-center gap-3 rounded-2xl border border-border bg-surface p-3.5 hover:border-primary/40"
+        >
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary-soft text-primary">
+            <MessageCircle className="h-5 w-5" />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-[14px] font-semibold leading-tight">{t("app.needHelpBooking")}</span>
+            <span className="mt-0.5 block text-[12.5px] text-muted">{t("app.chatWithUs")}</span>
+          </span>
+          <ChevronRight className="h-4 w-4 text-muted" />
+        </Link>
 
         {/* actions */}
         <div className="space-y-2.5 pt-1">

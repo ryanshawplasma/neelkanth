@@ -25,7 +25,7 @@ festival calendar with reminders, a pandit portal with KYC, and a full admin con
 src/app/
   (app)/        devotee app  — mobile-first PWA, bottom nav. Public browsing; booking needs login.
   (pandit)/     pandit portal — /pandit/*  (login, register, kyc, dashboard, bookings, services, availability, earnings)
-  (admin)/      admin console — /admin/*   (desktop layout with sidebar)
+  (admin)/      admin console — /admin/*   (sidebar on desktop; drawer + bottom bar on phones)
   api/          route handlers (upload, push, cron, payments webhook, panchang)
   pay/          mock payment gateway page (provider = mock)
 ```
@@ -69,7 +69,9 @@ src/app/
 - **Images**: services/temples/festivals reference `/images/<kind>/<slug>.svg` (generated art) or
   `/uploads/...` (admin uploads). Render with a plain `<img>` (`next/image` needs remote config).
 - **Mobile-first**: the devotee app is designed for 360–430px widths inside `max-w-md mx-auto`,
-  with a bottom navigation bar; admin console is desktop-first with a sidebar.
+  with a bottom navigation bar. The admin console must also work on a 375px phone: no sideways page
+  scroll, secondary table columns hidden or scrolling inside their card. Form fields render at 16px on
+  touch devices (globals.css) so iOS never zooms the page on focus.
 - **Accessibility**: labels on inputs, `aria-label` on icon buttons, focus rings kept.
 - **No new dependencies** without a good reason — the UI kit covers most needs.
 
@@ -82,6 +84,29 @@ src/app/
 4. On success `markPaid` → Booking `CONFIRMED`, `BookingEvent` appended, `notifyUser` (booking + pandit if assigned).
 5. Admin/pandit move status → `ASSIGNED` → `IN_PROGRESS` → `COMPLETED` (attaches `videoUrl`, `photos`).
 6. Devotee sees timeline, video, can review.
+
+## Accounts on a device (switching)
+
+Every sign-in (`createSession`) also records the account in a signed, httpOnly cookie `dd_accounts`
+(max 5, same 30-day window as the session). The account that was signed in just before is kept too.
+`switchAccountAction(uid, to?)` makes another remembered account active without OTP/password and
+keeps its original sign-in time (the session JWT carries `sia`), so switching never extends a session.
+`logoutAction` / `signOutAction("current")` forget the account on this device; `signOutAction("all")`
+clears the list. UI: `src/components/accounts/account-switcher.tsx` — the account sheet (shortcuts to
+admin console / pandit portal / devotee app, one-tap switch, add account, sign out) is opened from the
+admin top bar and drawer, the pandit top bar avatar, and the app's Account page. Login pages accept
+`?add=1` ("Add another account") and, when signed out, offer "Continue as" for remembered accounts.
+
+## Support chat
+
+One conversation per customer (`SupportThread`, `SupportMessage`) — `src/lib/support.ts`.
+Customers chat at `/support` (links from Account and every booking page, which attaches the booking);
+admins use `/admin/support` (inbox, filters) and `/admin/support/[id]` (full-screen on phones, customer
+details + recent bookings). Sending is a server action (`src/lib/support-actions.ts`); both sides poll a
+GET route (`/api/support/messages`, `/api/admin/support/[id]/messages`) every 3–15 s while visible, so it
+works on serverless hosts without websockets. Unread counters live on the thread; push/in-app
+notifications (type `SUPPORT`) go out for the first unread message of a burst and not while the other
+side has the chat open (`userSeenAt` / `adminSeenAt`). A customer message reopens a resolved thread.
 
 ## Reminders ("push near-date things")
 

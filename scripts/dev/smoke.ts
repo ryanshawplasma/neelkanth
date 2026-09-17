@@ -25,6 +25,7 @@ async function main() {
   const pBooking = await db.booking.findFirst({ where: { panditId: panditUser.pandit?.id } });
   const payment = await db.payment.findFirstOrThrow({ where: { status: "PENDING" } }).catch(() => db.payment.findFirstOrThrow());
   const anyUser = devotee;
+  const supportThread = await db.supportThread.upsert({ where: { userId: devotee.id }, create: { userId: devotee.id }, update: {} });
   const panditProfile = panditUser.pandit!;
 
   const cookies = {
@@ -45,6 +46,10 @@ async function main() {
     ["/admin/services", "admin"], ["/admin/services/new", "admin"], [`/admin/services/${svc.id}`, "admin"], ["/admin/categories", "admin"], ["/admin/temples", "admin"], [`/admin/temples/${temple.id}`, "admin"], ["/admin/temples/new", "admin"], ["/admin/festivals", "admin"], [`/admin/festivals/${fest.id}`, "admin"], ["/admin/festivals/new", "admin"],
     ["/admin/content", "admin"], [`/admin/content/${content.id}`, "admin"], ["/admin/content/new", "admin"], ["/admin/banners", "admin"], ["/admin/coupons", "admin"], ["/admin/notifications", "admin"], ["/admin/payments", "admin"], ["/admin/payouts", "admin"], ["/admin/reviews", "admin"], ["/admin/consultations", "admin"], ["/admin/settings", "admin"], ["/admin/audit", "admin"], ["/admin/search?q=ram", "admin"],
     ["/admin", "devotee"], ["/pandit/dashboard", "devotee"], ["/bookings", "anon"],
+    // support chat + account switching
+    ["/support", "devotee"], [`/support?booking=${booking.id}`, "devotee"], ["/support", "anon"], ["/api/support/messages", "devotee"], ["/api/support/messages?read=1", "devotee"],
+    ["/admin/support", "admin"], ["/admin/support?f=all", "admin"], ["/admin/support?f=unread&q=9", "admin"], [`/admin/support/${supportThread.id}`, "admin"], [`/api/admin/support/${supportThread.id}/messages`, "admin"],
+    ["/login?add=1", "devotee"], ["/pandit/login?add=1", "pandit"], ["/admin/login?add=1", "admin"],
   ];
 
   let bad = 0;

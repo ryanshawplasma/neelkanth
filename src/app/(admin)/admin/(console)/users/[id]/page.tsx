@@ -5,7 +5,7 @@ import { AdminPageHeader, DetailList, DetailRow, Panel } from "@/components/admi
 import { CellStack, DataTable, type Column } from "@/components/admin/data-table";
 import { StatusBadge } from "@/components/admin/status-badge";
 import { BlockUserButton } from "@/components/admin/pandit-actions-ui";
-import { LocaleSelect, MakeAdminButton, SendNotificationButton } from "@/components/admin/user-actions-ui";
+import { LocaleSelect, MakeAdminButton, MessageUserButton, SendNotificationButton } from "@/components/admin/user-actions-ui";
 import { Avatar } from "@/components/ui/misc";
 import { Badge } from "@/components/ui/badge";
 import { requireAdmin } from "@/lib/auth";
@@ -50,6 +50,7 @@ export default async function AdminUserDetailPage({ params }: { params: Promise<
         subtitle={`${u.phone ?? u.email ?? "—"} · ${t("admin.joinedOn", { date: formatDate(u.createdAt, locale) })}`}
         actions={
           <>
+            <MessageUserButton userId={u.id} />
             <SendNotificationButton userId={u.id} />
             <MakeAdminButton userId={u.id} role={u.role} />
             <BlockUserButton userId={u.id} blocked={u.isBlocked} />
@@ -57,7 +58,7 @@ export default async function AdminUserDetailPage({ params }: { params: Promise<
         }
       />
 
-      <div className="grid gap-4 xl:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
         <div className="space-y-4 xl:col-span-2">
           <Panel title={t("admin.bookingsTitle")} bodyClassName="p-0">
             <DataTable

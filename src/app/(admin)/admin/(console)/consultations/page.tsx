@@ -27,16 +27,29 @@ export default async function AdminConsultationsPage({ searchParams }: { searchP
     {
       key: "topic",
       header: t("admin.topic"),
-      cell: (c) => <CellStack top={labelOf(CONSULT_TOPICS, c.topic, locale)} bottom={c.question ?? "—"} />,
+      cell: (c) => (
+        <CellStack
+          top={labelOf(CONSULT_TOPICS, c.topic, locale)}
+          bottom={
+            <>
+              {/* Phones fold the devotee column into this line. */}
+              <span className="sm:hidden">{c.user.name ?? t("admin.noName")} · </span>
+              {c.question ?? "—"}
+            </>
+          }
+        />
+      ),
     },
     {
       key: "user",
       header: t("admin.colDevotee"),
+      hideOnMobile: true,
       cell: (c) => <CellStack top={c.user.name ?? t("admin.noName")} bottom={c.user.phone ?? ""} href={`/admin/users/${c.userId}`} />,
     },
     {
       key: "pandit",
       header: t("admin.colPandit"),
+      hideOnMobile: true,
       cell: (c) =>
         c.pandit ? (
           <Link href={`/admin/pandits/${c.pandit.id}`} className="text-xs font-medium hover:text-primary hover:underline">
@@ -50,6 +63,7 @@ export default async function AdminConsultationsPage({ searchParams }: { searchP
     {
       key: "scheduled",
       header: t("admin.scheduleAt"),
+      hideOnMobile: true,
       cell: (c) => <span className="whitespace-nowrap text-xs">{c.scheduledAt ? formatDateTime(c.scheduledAt, locale) : "—"}</span>,
     },
     { key: "status", header: t("common.status"), cell: (c) => <StatusBadge kind="consult" value={c.status} locale={locale} /> },

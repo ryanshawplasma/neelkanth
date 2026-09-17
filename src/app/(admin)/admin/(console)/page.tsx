@@ -35,11 +35,29 @@ export default async function AdminOverviewPage() {
   const o = await getOverview();
 
   const columns: Column<Row>[] = [
-    { key: "code", header: t("admin.colCode"), cell: (b) => <CellStack top={b.code} bottom={formatDateTime(b.createdAt, locale)} href={`/admin/bookings/${b.id}`} /> },
-    { key: "service", header: t("admin.colService"), cell: (b) => <CellStack top={loc(b.service, "name", locale)} bottom={labelOf(SERVICE_TYPES, b.type, locale)} /> },
+    {
+      key: "code",
+      header: t("admin.colCode"),
+      cell: (b) => (
+        <CellStack
+          top={b.code}
+          bottom={
+            <>
+              {/* Phones fold the amount column into this line. */}
+              <span className="sm:hidden">
+                {formatINR(b.amountTotal, locale)} · {formatDate(b.createdAt, locale, { year: undefined })}
+              </span>
+              <span className="max-sm:hidden">{formatDateTime(b.createdAt, locale)}</span>
+            </>
+          }
+          href={`/admin/bookings/${b.id}`}
+        />
+      ),
+    },
+    { key: "service", header: t("admin.colService"), cell: (b) => <CellStack top={loc(b.service, "name", locale)} bottom={labelOf(SERVICE_TYPES, b.type, locale)} />, hideOnMobile: true },
     { key: "devotee", header: t("admin.colDevotee"), cell: (b) => <CellStack top={b.user.name ?? t("admin.noName")} bottom={b.user.phone ?? b.user.email ?? ""} />, hideOnTablet: true },
-    { key: "date", header: t("common.date"), cell: (b) => <span className="whitespace-nowrap text-xs">{formatDate(b.scheduledDate, locale)}{b.scheduledSlot ? ` · ${b.scheduledSlot}` : ""}</span> },
-    { key: "amount", header: t("admin.colAmount"), align: "right", cell: (b) => <span className="whitespace-nowrap font-semibold tabular-nums">{formatINR(b.amountTotal, locale)}</span> },
+    { key: "date", header: t("common.date"), cell: (b) => <span className="whitespace-nowrap text-xs">{formatDate(b.scheduledDate, locale)}{b.scheduledSlot ? ` · ${b.scheduledSlot}` : ""}</span>, hideOnTablet: true },
+    { key: "amount", header: t("admin.colAmount"), align: "right", cell: (b) => <span className="whitespace-nowrap font-semibold tabular-nums">{formatINR(b.amountTotal, locale)}</span>, hideOnMobile: true },
     { key: "status", header: t("common.status"), cell: (b) => <StatusBadge kind="booking" value={b.status} locale={locale} /> },
   ];
 
@@ -121,7 +139,7 @@ export default async function AdminOverviewPage() {
         />
       </div>
 
-      <div className="mt-4 grid gap-4 xl:grid-cols-3">
+      <div className="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-3">
         <Panel title={t("admin.chartRevenue30")} subtitle={t("admin.chartRevenue30Sub")} className="xl:col-span-2">
           <MiniLineChart data={o.revenueSeries} format={(n) => compactINR(n)} ariaLabel={t("admin.chartRevenue30")} />
         </Panel>
@@ -148,7 +166,7 @@ export default async function AdminOverviewPage() {
         </Panel>
       </div>
 
-      <div className="mt-4 grid gap-4 xl:grid-cols-2">
+      <div className="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-2">
         <Panel title={t("admin.needsAttention")} icon={<TriangleAlert className="h-4 w-4 text-warning" />} bodyClassName="p-0">
           <div className="divide-y divide-border">
             <AttentionGroup
@@ -294,7 +312,10 @@ function AttentionGroup({
           <p className="text-xs text-muted">{hint}</p>
         </div>
         {count > 0 && (
-          <Link href={href} className="shrink-0 text-xs font-medium text-primary hover:underline">
+          <Link
+            href={href}
+            className="shrink-0 text-xs font-medium text-primary hover:underline max-sm:-mr-2 max-sm:inline-flex max-sm:h-10 max-sm:w-10 max-sm:items-center max-sm:justify-center max-sm:text-base"
+          >
             {href ? "→" : null}
           </Link>
         )}
@@ -307,9 +328,13 @@ function AttentionGroup({
 function AttentionRow({ href, title, meta }: { href: string; title: string; meta?: string }) {
   return (
     <li>
-      <Link href={href} className="flex items-center justify-between gap-3 rounded-lg px-2 py-1.5 text-xs hover:bg-surface-2">
+      {/* Phones stack the meta under the title so neither is squeezed. */}
+      <Link
+        href={href}
+        className="flex items-center justify-between gap-3 rounded-lg px-2 py-1.5 text-xs hover:bg-surface-2 max-sm:flex-col max-sm:items-stretch max-sm:gap-0.5 max-sm:py-2"
+      >
         <span className="min-w-0 flex-1 truncate font-medium">{title}</span>
-        {meta && <span className="shrink-0 text-muted">{meta}</span>}
+        {meta && <span className="shrink-0 text-muted max-sm:truncate">{meta}</span>}
       </Link>
     </li>
   );

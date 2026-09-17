@@ -10,7 +10,8 @@ import { useToast } from "@/components/ui/toast";
 import { useT, useLocale } from "@/i18n/client";
 import { CONSULT_MODES, CONSULT_STATUS_LABELS, optionsFrom, toLocalInput } from "@/lib/admin/util";
 import { updateConsultationAction } from "@/lib/admin/consult-actions";
-import { tErr } from "./action-button";
+import { cn } from "@/lib/utils";
+import { PHONE_SHEET, tErr } from "./action-button";
 
 export type ConsultDraft = {
   id: string;
@@ -34,10 +35,18 @@ export function ConsultationEditor({ consult, jyotishis }: { consult: ConsultDra
 
   return (
     <>
-      <Button size="sm" variant="outline" icon={<Pencil className="h-3.5 w-3.5" />} onClick={() => setOpen(true)}>
-        {t("admin.manage")}
+      {/* Icon-only on phones so the row keeps the topic and status in view. */}
+      <Button
+        size="sm"
+        variant="outline"
+        className="max-sm:w-9 max-sm:px-0"
+        icon={<Pencil className="h-3.5 w-3.5" />}
+        onClick={() => setOpen(true)}
+        aria-label={t("admin.manage")}
+      >
+        <span className="max-sm:sr-only">{t("admin.manage")}</span>
       </Button>
-      <Sheet open={open} onClose={() => setOpen(false)} side="center" title={t("admin.manageConsultation")} className="sm:max-w-xl">
+      <Sheet open={open} onClose={() => setOpen(false)} title={t("admin.manageConsultation")} className={cn(PHONE_SHEET, "sm:max-w-xl")}>
         <div className="space-y-3">
           <div className="grid gap-3 sm:grid-cols-2">
             <Field label={t("admin.assignJyotishi")}>

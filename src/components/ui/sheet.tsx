@@ -1,11 +1,14 @@
 "use client";
 
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 /**
  * Bottom sheet on mobile, centered dialog on desktop.
+ * Rendered into <body> through a portal: an ancestor with `backdrop-filter`, `filter` or `transform`
+ * (sticky blurred headers, animated drawers) would otherwise trap the fixed overlay inside itself.
  */
 export function Sheet({
   open,
@@ -24,6 +27,9 @@ export function Sheet({
   className?: string;
   side?: "bottom" | "center";
 }) {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
@@ -36,8 +42,8 @@ export function Sheet({
     };
   }, [open, onClose]);
 
-  if (!open) return null;
-  return (
+  if (!open || !mounted) return null;
+  return createPortal(
     <div className="fixed inset-0 z-[90]" role="dialog" aria-modal="true">
       <div className="absolute inset-0 bg-black/45 animate-[fade-up_0.2s]" onClick={onClose} />
       <div
@@ -59,7 +65,8 @@ export function Sheet({
         <div className="flex-1 overflow-y-auto px-5 py-4">{children}</div>
         {footer && <div className="border-t border-border px-5 py-3 pb-safe">{footer}</div>}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 

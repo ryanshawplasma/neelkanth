@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState, useTransition } from "react";
-import { Bell, ChevronRight, FileText, Heart, LogOut, Pencil, Plus, ShieldCheck, Trash2, UserCog, Users } from "lucide-react";
+import { ArrowLeftRight, Bell, ChevronRight, FileText, Heart, LayoutDashboard, LogOut, MessageCircle, Pencil, Plus, ShieldCheck, Trash2, UserCog, Users } from "lucide-react";
 import { useLocale, useT } from "@/i18n/client";
 import { Button } from "@/components/ui/button";
 import { Field, Input, Select } from "@/components/ui/input";
@@ -20,6 +20,7 @@ import {
   updateProfileAction,
 } from "@/lib/app/account-actions";
 import { logoutAction } from "@/lib/auth-actions";
+import { SwitchAccountTrigger, type SwitcherCurrent } from "@/components/accounts/account-switcher";
 import { Scroller, ServiceCard } from "./cards";
 import type { ServiceCardData } from "@/lib/app/types";
 
@@ -44,7 +45,21 @@ type FamilyRow = { id: string; name: string; relation: string | null; gotra: str
 
 const RELATIONS = ["self", "spouse", "father", "mother", "son", "daughter", "brother", "sister"];
 
-export function AccountView({ user, family: initialFamily, favorites }: { user: AccountUser; family: FamilyRow[]; favorites: ServiceCardData[] }) {
+export function AccountView({
+  user,
+  account,
+  supportUnread = 0,
+  family: initialFamily,
+  favorites,
+}: {
+  user: AccountUser;
+  /** Signed-in account, for the account switcher. */
+  account: SwitcherCurrent;
+  /** Unread replies from the support team. */
+  supportUnread?: number;
+  family: FamilyRow[];
+  favorites: ServiceCardData[];
+}) {
   const t = useT();
   const locale = useLocale();
   const { toast } = useToast();
@@ -118,9 +133,18 @@ export function AccountView({ user, family: initialFamily, favorites }: { user: 
       {/* quick links */}
       <section className="mt-4 px-4">
         <div className="divide-y divide-border overflow-hidden rounded-2xl border border-border bg-surface">
+          {user.role === "ADMIN" && <RowLink href="/admin" icon={<LayoutDashboard className="h-4 w-4" />} label={t("common.adminConsole")} />}
           <RowLink href="/bookings" icon={<FileText className="h-4 w-4" />} label={t("common.bookings")} />
           <RowLink href="/notifications" icon={<Bell className="h-4 w-4" />} label={t("common.notifications")} />
+          <RowLink href="/support" icon={<MessageCircle className="h-4 w-4" />} label={t("app.helpSupport")} badge={supportUnread} />
           <RowLink href={user.role === "PANDIT" || user.role === "ADMIN" ? "/pandit/dashboard" : "/pandit/register"} icon={<ShieldCheck className="h-4 w-4" />} label={user.role === "PANDIT" || user.role === "ADMIN" ? t("common.panditPortal") : t("common.joinAsPandit")} />
+          <SwitchAccountTrigger area="app" current={account} className="flex w-full items-center gap-3 px-3.5 py-3 text-left">
+            <span className="text-muted">
+              <ArrowLeftRight className="h-4 w-4" />
+            </span>
+            <span className="flex-1 text-[13.5px] font-medium">{t("common.switchAccount")}</span>
+            <ChevronRight className="h-4 w-4 text-muted" />
+          </SwitchAccountTrigger>
         </div>
       </section>
 
@@ -358,11 +382,14 @@ export function AccountView({ user, family: initialFamily, favorites }: { user: 
   );
 }
 
-function RowLink({ href, icon, label }: { href: string; icon?: React.ReactNode; label: string }) {
+function RowLink({ href, icon, label, badge }: { href: string; icon?: React.ReactNode; label: string; badge?: number }) {
   return (
     <Link href={href} className="flex items-center gap-3 px-3.5 py-3">
       {icon && <span className="text-muted">{icon}</span>}
       <span className="flex-1 text-[13.5px] font-medium">{label}</span>
+      {!!badge && badge > 0 && (
+        <span className="min-w-5 rounded-full bg-primary px-1.5 text-center text-[11px] font-bold leading-5 text-white">{badge > 9 ? "9+" : badge}</span>
+      )}
       <ChevronRight className="h-4 w-4 text-muted" />
     </Link>
   );

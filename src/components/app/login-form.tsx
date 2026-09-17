@@ -11,8 +11,10 @@ import { LanguageSwitch } from "@/components/ui/language-switch";
 import { useToast } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
 import { requestOtpAction, verifyOtpAction } from "@/lib/auth-actions";
+import type { DeviceAccount } from "@/lib/account-types";
+import { AddingAccountBanner, DeviceAccountChooser } from "@/components/accounts/account-switcher";
 
-export function LoginForm({ next }: { next: string }) {
+export function LoginForm({ next, adding = false, deviceAccounts = [] }: { next: string; adding?: boolean; deviceAccounts?: DeviceAccount[] }) {
   const t = useT();
   const router = useRouter();
   const { toast } = useToast();
@@ -59,8 +61,14 @@ export function LoginForm({ next }: { next: string }) {
         boxes.current[0]?.focus();
         return;
       }
+      const dest = res.data!.onboarded ? next : `/onboarding?next=${encodeURIComponent(next)}`;
+      if (adding) {
+        // A different identity: start from a clean page so nothing from the other account lingers.
+        window.location.assign(dest);
+        return;
+      }
       toast(`${t("app.welcome")} 🙏`);
-      router.replace(res.data!.onboarded ? next : `/onboarding?next=${encodeURIComponent(next)}`);
+      router.replace(dest);
       router.refresh();
     });
   }
@@ -107,6 +115,8 @@ export function LoginForm({ next }: { next: string }) {
       <div className="mt-8">
         {stage === "phone" ? (
           <>
+            {adding && <AddingAccountBanner className="mb-5" />}
+            {!adding && deviceAccounts.length > 0 && <DeviceAccountChooser accounts={deviceAccounts} to={next} className="mb-6" />}
             <h2 className="text-[18px] font-bold">{t("app.loginTitle")}</h2>
             <p className="mt-1 text-[13px] text-muted">{t("app.loginSubtitle")}</p>
             <div className="mt-4 flex items-center gap-2 rounded-2xl border border-border bg-surface px-3.5">

@@ -8,6 +8,8 @@ const nextConfig: NextConfig = {
   // Lets several dev servers run against one checkout (NEXT_DIST_DIR=.next-app npx next dev -p 3001)
   distDir: process.env.NEXT_DIST_DIR || ".next",
   images: { unoptimized: true },
+  // Dev only: lets a second browser session use http://127.0.0.1:3000 (separate cookie jar) for testing.
+  allowedDevOrigins: ["127.0.0.1"],
   serverExternalPackages: ["@prisma/client", "web-push", "sharp"],
   experimental: { serverActions: { bodySizeLimit: "10mb" } },
   webpack: (config) => {

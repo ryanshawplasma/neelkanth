@@ -2,15 +2,41 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Send, ShieldCheck } from "lucide-react";
+import { MessageCircle, Send, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Field, Input, Select, Textarea } from "@/components/ui/input";
 import { Sheet, ConfirmDialog } from "@/components/ui/sheet";
 import { useToast } from "@/components/ui/toast";
 import { useT } from "@/i18n/client";
 import { sendUserNotificationAction, setUserLocaleAction, setUserRoleAction } from "@/lib/admin/user-actions";
+import { adminOpenSupportThreadAction } from "@/lib/support-actions";
 import { HREF_PRESETS } from "@/lib/admin/util";
 import { tErr } from "./action-button";
+
+/** Open (creating if needed) the support conversation with this devotee. */
+export function MessageUserButton({ userId }: { userId: string }) {
+  const t = useT();
+  const router = useRouter();
+  const { toast } = useToast();
+  const [pending, start] = useTransition();
+  return (
+    <Button
+      size="sm"
+      variant="outline"
+      loading={pending}
+      icon={<MessageCircle className="h-4 w-4" />}
+      onClick={() =>
+        start(async () => {
+          const res = await adminOpenSupportThreadAction(userId);
+          if (res.ok && res.data) router.push(`/admin/support/${res.data.threadId}`);
+          else toast(tErr(t, res.ok ? "" : res.error), "error");
+        })
+      }
+    >
+      {t("admin.supportMessageUser")}
+    </Button>
+  );
+}
 
 /** Change the user's preferred app language. */
 export function LocaleSelect({ userId, value }: { userId: string; value: string }) {

@@ -4,7 +4,8 @@ import { redirect } from "next/navigation";
 import { ArrowLeft, ShieldCheck } from "lucide-react";
 import { AdminLoginForm } from "@/components/admin/login-form";
 import { LanguageSwitch } from "@/components/ui/language-switch";
-import { getCurrentUser } from "@/lib/auth";
+import { getCurrentUser, getDeviceAccounts } from "@/lib/auth";
+import { AddingAccountBanner, DeviceAccountChooser } from "@/components/accounts/account-switcher";
 import { getT } from "@/i18n/server";
 import type { SearchParams } from "@/lib/admin/util";
 import { sp } from "@/lib/admin/util";
@@ -12,10 +13,14 @@ import { sp } from "@/lib/admin/util";
 export const metadata: Metadata = { title: "Sign in" };
 
 export default async function AdminLoginPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
-  const user = await getCurrentUser();
-  if (user?.role === "ADMIN") redirect("/admin");
   const params = await searchParams;
+  // `?add=1` comes from "Add another account": stay on the form even though someone is signed in.
+  const adding = sp(params, "add") === "1";
+  const user = await getCurrentUser();
+  if (user?.role === "ADMIN" && !adding) redirect("/admin");
   const { t } = await getT();
+  const next = sp(params, "next");
+  const deviceAccounts = user ? [] : (await getDeviceAccounts()).filter((a) => a.role === "ADMIN");
 
   return (
     <div className="bg-devotional flex min-h-dvh flex-col">
@@ -38,9 +43,14 @@ export default async function AdminLoginPage({ searchParams }: { searchParams: P
             </p>
           </div>
 
+          {adding && !!user && <AddingAccountBanner className="mb-4" />}
+          {deviceAccounts.length > 0 && (
+            <DeviceAccountChooser accounts={deviceAccounts} to={next.startsWith("/admin") ? next : "/admin"} className="mb-4" />
+          )}
+
           <div className="rounded-3xl border border-border bg-surface p-6 shadow-[var(--shadow)]">
             <h2 className="mb-4 text-base font-semibold">{t("admin.signInTitle")}</h2>
-            <AdminLoginForm next={sp(params, "next")} />
+            <AdminLoginForm next={next} adding={adding && !!user} />
           </div>
 
           <p className="mt-4 text-center text-xs text-muted">{t("admin.signInHint")}</p>

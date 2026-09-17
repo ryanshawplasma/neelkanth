@@ -70,7 +70,7 @@ export default async function AdminBookingDetailPage({ params }: { params: Promi
             <Link
               href={`/bookings/${booking.id}`}
               target="_blank"
-              className="inline-flex items-center gap-1.5 rounded-xl border border-border px-3 py-2 text-xs font-medium hover:bg-surface-2"
+              className="inline-flex items-center gap-1.5 rounded-xl border border-border px-3 py-2 text-xs font-medium hover:bg-surface-2 max-sm:h-10"
             >
               <ExternalLink className="h-3.5 w-3.5" />
               {t("admin.viewAsDevotee")}
@@ -89,7 +89,7 @@ export default async function AdminBookingDetailPage({ params }: { params: Promi
         }
       />
 
-      <div className="grid gap-4 xl:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
         <div className="space-y-4 xl:col-span-2">
           <Panel title={t("admin.bookingDetails")} icon={<CalendarCheck className="h-4 w-4 text-muted" />}>
             <DetailList>

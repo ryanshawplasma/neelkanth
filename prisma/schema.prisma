@@ -43,15 +43,17 @@ model User {
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
 
-  pandit        PanditProfile?
-  bookings      Booking[]          @relation("UserBookings")
-  notifications Notification[]
-  pushSubs      PushSubscription[]
-  reviews       Review[]
-  familyMembers FamilyMember[]
-  auditLogs     AuditLog[]
-  favorites     Favorite[]
-  consultations Consultation[]     @relation("UserConsultations")
+  pandit          PanditProfile?
+  bookings        Booking[]          @relation("UserBookings")
+  notifications   Notification[]
+  pushSubs        PushSubscription[]
+  reviews         Review[]
+  familyMembers   FamilyMember[]
+  auditLogs       AuditLog[]
+  favorites       Favorite[]
+  consultations   Consultation[]     @relation("UserConsultations")
+  supportThread   SupportThread?
+  supportMessages SupportMessage[]
 }
 
 model FamilyMember {
@@ -434,9 +436,10 @@ model Booking {
   createdAt      DateTime        @default(now())
   updatedAt      DateTime        @updatedAt
 
-  payment  Payment?
-  review   Review?
-  timeline BookingEvent[]
+  payment         Payment?
+  review          Review?
+  timeline        BookingEvent[]
+  supportMessages SupportMessage[]
 }
 
 model BookingEvent {
@@ -605,6 +608,7 @@ enum NotificationType {
   SYSTEM
   KYC
   PANCHANG
+  SUPPORT
 }
 
 model Notification {
@@ -653,6 +657,54 @@ model Campaign {
   sentCount   Int       @default(0)
   status      String    @default("DRAFT") // DRAFT | SCHEDULED | SENT
   createdAt   DateTime  @default(now())
+}
+
+// ─────────────────────────── Support chat ───────────────────────────
+
+enum SupportStatus {
+  OPEN
+  RESOLVED
+}
+
+/// One ongoing conversation per customer with the support team (admins).
+model SupportThread {
+  id                 String           @id @default(cuid())
+  userId             String           @unique
+  user               User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  status             SupportStatus    @default(OPEN)
+  lastMessageAt      DateTime         @default(now())
+  lastMessagePreview String?
+  lastFromAdmin      Boolean          @default(false)
+  /// Messages from support the customer has not seen yet.
+  userUnread         Int              @default(0)
+  /// Messages from the customer no admin has seen yet.
+  adminUnread        Int              @default(0)
+  /// Last time the customer / an admin had the conversation open (suppresses push while watching).
+  userSeenAt         DateTime?
+  adminSeenAt        DateTime?
+  resolvedAt         DateTime?
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+  messages           SupportMessage[]
+
+  @@index([status, lastMessageAt])
+  @@index([lastMessageAt])
+}
+
+model SupportMessage {
+  id        String        @id @default(cuid())
+  threadId  String
+  thread    SupportThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  senderId  String?
+  sender    User?         @relation(fields: [senderId], references: [id], onDelete: SetNull)
+  fromAdmin Boolean       @default(false)
+  body      String
+  /// Optional booking the message is about (shown as a chip to both sides).
+  bookingId String?
+  booking   Booking?      @relation(fields: [bookingId], references: [id], onDelete: SetNull)
+  createdAt DateTime      @default(now())
+
+  @@index([threadId, createdAt])
 }
 
 // ─────────────────────────── Platform ───────────────────────────

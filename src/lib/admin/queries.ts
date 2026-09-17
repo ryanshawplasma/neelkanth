@@ -121,6 +121,11 @@ export async function getPendingKycCount() {
   return db.panditProfile.count({ where: { kycStatus: "SUBMITTED" } });
 }
 
+/** Support conversations with customer messages no admin has read yet. */
+export async function getSupportUnreadCount() {
+  return db.supportThread.count({ where: { adminUnread: { gt: 0 } } });
+}
+
 // ─────────────────────────── Bookings ───────────────────────────
 
 export async function listBookings(params: SearchParams) {

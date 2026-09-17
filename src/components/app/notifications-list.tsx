@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import { BellOff, CalendarHeart, Gift, Info, Package, Star } from "lucide-react";
+import { BellOff, CalendarHeart, Gift, Info, MessageCircle, Package, Star } from "lucide-react";
 import { useLoc, useLocale, useT } from "@/i18n/client";
 import { EmptyState } from "@/components/ui/misc";
 import { cn } from "@/lib/utils";
@@ -30,6 +30,7 @@ const ICONS: Record<string, typeof Info> = {
   KYC: Star,
   PANCHANG: CalendarHeart,
   SYSTEM: Info,
+  SUPPORT: MessageCircle,
 };
 
 export function NotificationsList({ items }: { items: NotificationRow[] }) {

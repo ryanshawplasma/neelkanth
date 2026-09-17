@@ -94,7 +94,7 @@ export default async function AdminPanditDetailPage({ params }: { params: Promis
         }
       />
 
-      <div className="grid gap-4 xl:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
         <div className="space-y-4 xl:col-span-2">
           <Panel title={t("admin.kycDocuments")} icon={<FileCheck className="h-4 w-4 text-muted" />} subtitle={t("admin.kycDocumentsHint")}>
             {p.documents.length === 0 ? (

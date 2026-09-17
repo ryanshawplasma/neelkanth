@@ -11,7 +11,7 @@ import { useToast } from "@/components/ui/toast";
 import { Avatar, Stars } from "@/components/ui/misc";
 import { Badge } from "@/components/ui/badge";
 import { useT } from "@/i18n/client";
-import { formatINR } from "@/lib/utils";
+import { cn, formatINR } from "@/lib/utils";
 import {
   assignPanditAction,
   autoAssignAction,
@@ -20,7 +20,7 @@ import {
   transitionBookingAction,
   updateBookingMediaAction,
 } from "@/lib/admin/booking-actions";
-import { tErr } from "./action-button";
+import { PHONE_SHEET, tErr } from "./action-button";
 
 export type Candidate = {
   id: string;
@@ -68,11 +68,11 @@ export function AssignPanditSheet({
 
   return (
     <>
-      <Button size="sm" variant="primary" icon={<UserCheck className="h-4 w-4" />} onClick={() => setOpen(true)}>
+      <Button size="sm" variant="primary" className="max-sm:h-10" icon={<UserCheck className="h-4 w-4" />} onClick={() => setOpen(true)}>
         {currentPanditId ? t("admin.reassignPandit") : t("admin.assignPandit")}
       </Button>
 
-      <Sheet open={open} onClose={() => setOpen(false)} title={t("admin.assignPanditTitle")} side="center" className="sm:max-w-xl">
+      <Sheet open={open} onClose={() => setOpen(false)} title={t("admin.assignPanditTitle")} className={cn(PHONE_SHEET, "sm:max-w-xl")}>
         {canAutoAssign && (
           <Button
             full
@@ -96,12 +96,12 @@ export function AssignPanditSheet({
             <li key={c.id} className="flex items-center gap-3 rounded-xl border border-border p-2.5">
               <Avatar src={c.photoUrl} name={c.name} size={36} />
               <div className="min-w-0 flex-1">
-                <p className="flex items-center gap-1.5 truncate text-sm font-medium">
+                <p className="flex items-center gap-1.5 truncate text-sm font-medium max-sm:flex-wrap">
                   {c.name}
                   {c.verified && <Badge tone="success">{t("common.verified")}</Badge>}
                   {c.sameCity && <Badge tone="info">{t("admin.sameCity")}</Badge>}
                 </p>
-                <p className="flex items-center gap-2 text-xs text-muted">
+                <p className="flex items-center gap-2 text-xs text-muted max-sm:flex-wrap max-sm:gap-x-2 max-sm:gap-y-0.5">
                   {c.city ?? "—"}
                   <Stars value={c.ratingAvg} count={c.ratingCount} />
                   {c.overridePrice !== null && <span>{formatINR(c.overridePrice)}</span>}
@@ -252,10 +252,10 @@ export function RefundButton({ bookingId, amount }: { bookingId: string; amount:
 
   return (
     <>
-      <Button size="sm" variant="outline" className="text-danger" icon={<IndianRupee className="h-4 w-4" />} onClick={() => setOpen(true)}>
+      <Button size="sm" variant="outline" className="text-danger max-sm:h-10" icon={<IndianRupee className="h-4 w-4" />} onClick={() => setOpen(true)}>
         {t("admin.refund")}
       </Button>
-      <Sheet open={open} onClose={() => setOpen(false)} title={t("admin.refundTitle")} side="center">
+      <Sheet open={open} onClose={() => setOpen(false)} title={t("admin.refundTitle")} className={PHONE_SHEET}>
         <p className="mb-3 text-sm text-muted">{t("admin.refundDescription", { amount: formatINR(amount) })}</p>
         <Field label={t("admin.refundReason")} required>
           <Textarea value={reason} onChange={(e) => setReason(e.target.value)} rows={3} />
@@ -301,10 +301,10 @@ export function MarkPaidButton({ bookingId }: { bookingId: string }) {
 
   return (
     <>
-      <Button size="sm" variant="secondary" icon={<Check className="h-4 w-4" />} onClick={() => setOpen(true)}>
+      <Button size="sm" variant="secondary" className="max-sm:h-10" icon={<Check className="h-4 w-4" />} onClick={() => setOpen(true)}>
         {t("admin.markPaid")}
       </Button>
-      <Sheet open={open} onClose={() => setOpen(false)} title={t("admin.markPaidTitle")} side="center">
+      <Sheet open={open} onClose={() => setOpen(false)} title={t("admin.markPaidTitle")} className={PHONE_SHEET}>
         <p className="mb-3 text-sm text-muted">{t("admin.markPaidHint")}</p>
         <Field label={t("admin.paymentReference")}>
           <Input value={reference} onChange={(e) => setReference(e.target.value)} className="h-10" placeholder="UTR / receipt no." />

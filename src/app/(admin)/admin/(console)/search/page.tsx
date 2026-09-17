@@ -28,7 +28,7 @@ export default async function AdminSearchPage({ searchParams }: { searchParams: 
 
       {q.length >= 2 && total === 0 && <p className="rounded-2xl border border-border bg-surface p-10 text-center text-sm text-muted">{t("common.noResults")}</p>}
 
-      <div className="grid gap-4 xl:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
         {r.bookings.length > 0 && (
           <Panel title={t("admin.bookingsTitle")} icon={<CalendarCheck className="h-4 w-4 text-muted" />} bodyClassName="p-0">
             <ul className="divide-y divide-border">

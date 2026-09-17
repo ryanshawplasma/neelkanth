@@ -37,7 +37,7 @@ export async function Pagination({
   return (
     <div className="mt-3 flex flex-wrap items-center justify-between gap-3 text-sm">
       <p className="text-muted">{t("admin.showingRange", { from, to, total })}</p>
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3 max-sm:w-full max-sm:flex-wrap max-sm:justify-between">
         <label className="flex items-center gap-1.5 text-xs text-muted">
           {t("admin.perPage")}
           <span className="flex overflow-hidden rounded-lg border border-border">
@@ -45,7 +45,7 @@ export async function Pagination({
               <Link
                 key={s}
                 href={link({ size: s, page: 1 })}
-                className={cn("px-2 py-1 text-xs", s === size ? "bg-primary text-white" : "bg-surface hover:bg-surface-2")}
+                className={cn("px-2 py-1 text-xs max-sm:px-2.5 max-sm:py-2", s === size ? "bg-primary text-white" : "bg-surface hover:bg-surface-2")}
               >
                 {s}
               </Link>
@@ -83,7 +83,7 @@ function PageLink({
   children: React.ReactNode;
 } & Omit<React.ComponentProps<typeof Link>, "href" | "children">) {
   const cls = cn(
-    "inline-flex h-8 min-w-8 items-center justify-center rounded-lg border px-2 text-xs font-medium",
+    "inline-flex h-8 min-w-8 items-center justify-center rounded-lg border px-2 text-xs font-medium max-sm:h-9 max-sm:min-w-9",
     active ? "border-primary bg-primary text-white" : "border-border bg-surface hover:bg-surface-2",
     disabled && "pointer-events-none opacity-40",
   );

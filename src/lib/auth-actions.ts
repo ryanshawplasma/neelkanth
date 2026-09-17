@@ -4,7 +4,20 @@ import bcrypt from "bcryptjs";
 import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
 import { db } from "./db";
-import { audit, createSession, destroySession, getSession, normalizePhone } from "./auth";
+import {
+  audit,
+  canOpenPath,
+  clearDeviceAccounts,
+  createSession,
+  destroySession,
+  forgetDeviceAccount,
+  getDeviceAccounts,
+  getDeviceEntry,
+  getSession,
+  homePathFor,
+  normalizePhone,
+} from "./auth";
+import type { AccountArea, DeviceAccount } from "./account-types";
 import { OtpDeliveryError, requestOtp, verifyOtp } from "./otp";
 import { LOCALE_COOKIE, isLocale } from "@/i18n/config";
 
@@ -72,9 +85,72 @@ export async function adminLoginAction(email: string, password: string): Promise
   return { ok: true };
 }
 
+/** Sign out of the current account (it is also forgotten on this device). */
 export async function logoutAction(redirectTo = "/") {
   const s = await getSession();
-  if (s) await audit(s.uid, "auth.logout", "User", s.uid);
+  if (s) {
+    await audit(s.uid, "auth.logout", "User", s.uid);
+    await forgetDeviceAccount(s.uid);
+  }
   await destroySession();
   redirect(redirectTo);
+}
+
+// ─────────────────────────── Account switching ───────────────────────────
+
+/** Accounts signed in on this device, current first (loaded when a switcher opens). */
+export async function getDeviceAccountsAction(): Promise<DeviceAccount[]> {
+  return getDeviceAccounts();
+}
+
+/**
+ * Make another account signed in on this device the active one — no OTP or password needed,
+ * because it already signed in here. Returns where to go (`to` when that account may open it).
+ */
+export async function switchAccountAction(uid: string, to?: string): Promise<ActionResult<{ href: string }>> {
+  const [session, entry] = await Promise.all([getSession(), getDeviceEntry(uid)]);
+  const isCurrent = session?.uid === uid;
+  if (!entry && !isCurrent) return { ok: false, error: "accountUnavailable" };
+
+  const user = await db.user.findUnique({ where: { id: uid }, include: { pandit: { select: { id: true } } } });
+  if (!user || user.isBlocked) {
+    await forgetDeviceAccount(uid);
+    return { ok: false, error: "accountUnavailable" };
+  }
+
+  if (!isCurrent || session?.role !== user.role) {
+    // Keep the original sign-in time so switching never extends a session.
+    await createSession(user.id, user.role, { signedInAt: entry?.t ?? session?.sia });
+    if (!isCurrent) await audit(user.id, "auth.switch_account", "User", user.id, { from: session?.uid ?? null });
+  }
+  const href = to && canOpenPath(user, to) ? to : homePathFor(user);
+  return { ok: true, data: { href } };
+}
+
+/** Remove another account from this device (it will need to sign in again). */
+export async function forgetAccountAction(uid: string): Promise<ActionResult> {
+  const session = await getSession();
+  if (session?.uid === uid) return { ok: false, error: "cannotRemoveCurrent" };
+  await forgetDeviceAccount(uid);
+  return { ok: true };
+}
+
+const LOGIN_PATH: Record<AccountArea, string> = { app: "/login", pandit: "/pandit/login", admin: "/admin/login" };
+const SIGNED_OUT_PATH: Record<AccountArea, string> = { app: "/", pandit: "/pandit/login", admin: "/admin/login" };
+
+/**
+ * Sign out from a switcher. "current" signs out of the active account only; when other accounts
+ * stay signed in on the device, it lands on the login page where they are offered one-tap.
+ */
+export async function signOutAction(scope: "current" | "all", area: AccountArea): Promise<ActionResult<{ href: string }>> {
+  const session = await getSession();
+  if (session) await audit(session.uid, scope === "all" ? "auth.logout_all" : "auth.logout", "User", session.uid);
+  if (scope === "all") {
+    await clearDeviceAccounts();
+    await destroySession();
+    return { ok: true, data: { href: SIGNED_OUT_PATH[area] } };
+  }
+  const remaining = session ? await forgetDeviceAccount(session.uid) : 0;
+  await destroySession();
+  return { ok: true, data: { href: remaining > 0 ? LOGIN_PATH[area] : SIGNED_OUT_PATH[area] } };
 }

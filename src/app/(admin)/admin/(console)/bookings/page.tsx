@@ -25,21 +25,38 @@ export default async function AdminBookingsPage({ searchParams }: { searchParams
     {
       key: "code",
       header: t("admin.colCode"),
-      cell: (b) => <CellStack top={b.code} bottom={formatDateTime(b.createdAt, locale)} href={`/admin/bookings/${b.id}`} />,
+      cell: (b) => (
+        <CellStack
+          top={b.code}
+          bottom={
+            <>
+              {/* Phones fold the amount column into this line. */}
+              <span className="sm:hidden">
+                {formatINR(b.amountTotal, locale)} · {formatDate(b.createdAt, locale, { year: undefined })}
+              </span>
+              <span className="max-sm:hidden">{formatDateTime(b.createdAt, locale)}</span>
+            </>
+          }
+          href={`/admin/bookings/${b.id}`}
+        />
+      ),
     },
     {
       key: "service",
       header: t("admin.colService"),
+      hideOnMobile: true,
       cell: (b) => <CellStack top={loc(b.service, "name", locale)} bottom={labelOf(SERVICE_TYPES, b.type, locale)} />,
     },
     {
       key: "devotee",
       header: t("admin.colDevotee"),
+      hideOnTablet: true,
       cell: (b) => <CellStack top={b.user.name ?? t("admin.noName")} bottom={b.user.phone ?? b.user.email ?? ""} href={`/admin/users/${b.userId}`} />,
     },
     {
       key: "when",
       header: t("admin.colWhen"),
+      hideOnTablet: true,
       cell: (b) => (
         <span className="whitespace-nowrap text-xs">
           {formatDate(b.scheduledDate, locale)}
@@ -66,6 +83,7 @@ export default async function AdminBookingsPage({ searchParams }: { searchParams
       key: "amount",
       header: t("admin.colAmount"),
       align: "right",
+      hideOnMobile: true,
       cell: (b) => <span className="whitespace-nowrap font-semibold tabular-nums">{formatINR(b.amountTotal, locale)}</span>,
     },
     {

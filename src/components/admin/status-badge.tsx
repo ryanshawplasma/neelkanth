@@ -1,4 +1,5 @@
 import { Badge, type Tone } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
 import { BOOKING_STATUSES, KYC_STATUSES, labelOf } from "@/lib/constants";
 import type { Locale } from "@/i18n/config";
 import {
@@ -57,8 +58,9 @@ export function StatusBadge({ kind, value, locale, className }: { kind: StatusKi
       tone = KYC_DOC_STATUS_TONE[value] ?? "muted";
       break;
   }
+  // Below lg a status pill never wraps onto two lines inside a narrow table column.
   return (
-    <Badge tone={tone} dot className={className}>
+    <Badge tone={tone} dot className={cn("max-lg:whitespace-nowrap", className)}>
       {label}
     </Badge>
   );

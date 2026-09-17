@@ -39,7 +39,7 @@ export function MiniLineChart({
 
   return (
     <div className={cn("w-full", className)}>
-      <svg viewBox={`0 0 ${w} ${h}`} className="h-auto w-full" role="img" aria-label={ariaLabel ?? "chart"} preserveAspectRatio="none">
+      <svg viewBox={`0 0 ${w} ${h}`} className="h-auto w-full max-sm:h-28" role="img" aria-label={ariaLabel ?? "chart"} preserveAspectRatio="none">
         <defs>
           <linearGradient id="ddLineFill" x1="0" y1="0" x2="0" y2="1">
             <stop offset="0%" stopColor="var(--primary)" stopOpacity="0.28" />
@@ -81,7 +81,7 @@ export function MiniBarChart({
   return (
     <ul className={cn("space-y-2", className)}>
       {data.map((d) => (
-        <li key={d.label} className="grid grid-cols-[9.5rem_1fr_3rem] items-center gap-2 text-xs">
+        <li key={d.label} className="grid grid-cols-[9.5rem_1fr_3rem] items-center gap-2 text-xs max-sm:grid-cols-[7rem_1fr_2.5rem]">
           <span className="truncate text-muted">{d.label}</span>
           <span className="h-3 overflow-hidden rounded-full bg-surface-2">
             <span

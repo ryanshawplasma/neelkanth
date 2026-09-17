@@ -9,7 +9,7 @@ import { adminLoginAction } from "@/lib/auth-actions";
 import { useT } from "@/i18n/client";
 import { tErr } from "./action-button";
 
-export function AdminLoginForm({ next }: { next?: string }) {
+export function AdminLoginForm({ next, adding = false }: { next?: string; adding?: boolean }) {
   const t = useT();
   const router = useRouter();
   const [pending, start] = useTransition();
@@ -26,7 +26,12 @@ export function AdminLoginForm({ next }: { next?: string }) {
         setError(res.error === "invalidCredentials" ? t("admin.errInvalidCredentials") : tErr(t, res.error));
         return;
       }
-      router.replace(next && next.startsWith("/admin") ? next : "/admin");
+      const dest = next && next.startsWith("/admin") && !next.startsWith("/admin/login") ? next : "/admin";
+      if (adding) {
+        window.location.assign(dest);
+        return;
+      }
+      router.replace(dest);
       router.refresh();
     });
   }

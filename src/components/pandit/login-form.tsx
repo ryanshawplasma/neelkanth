@@ -10,10 +10,12 @@ import { Field, Input } from "@/components/ui/input";
 import { LanguageSwitch } from "@/components/ui/language-switch";
 import { useT } from "@/i18n/client";
 import { cn } from "@/lib/utils";
+import type { DeviceAccount } from "@/lib/account-types";
+import { AddingAccountBanner, DeviceAccountChooser } from "@/components/accounts/account-switcher";
 
 const RESEND_SECONDS = 30;
 
-export function PanditLoginForm() {
+export function PanditLoginForm({ adding = false, deviceAccounts = [] }: { adding?: boolean; deviceAccounts?: DeviceAccount[] }) {
   const t = useT();
   const router = useRouter();
   const [step, setStep] = useState<"phone" | "otp">("phone");
@@ -58,7 +60,12 @@ export function PanditLoginForm() {
       boxes.current[0]?.focus();
       return setError(t(`common.${res.error}`));
     }
-    router.replace(res.data?.hasPanditProfile ? "/pandit/dashboard" : "/pandit/register");
+    const dest = res.data?.hasPanditProfile ? "/pandit/dashboard" : "/pandit/register";
+    if (adding) {
+      window.location.assign(dest);
+      return;
+    }
+    router.replace(dest);
     router.refresh();
   }
 
@@ -93,6 +100,8 @@ export function PanditLoginForm() {
 
       {step === "phone" ? (
         <div className="mt-8 animate-fade-up">
+          {adding && <AddingAccountBanner className="mb-6" />}
+          {!adding && deviceAccounts.length > 0 && <DeviceAccountChooser accounts={deviceAccounts} to="/pandit/dashboard" className="mb-7" />}
           <h1 className="font-[var(--font-display)] text-2xl font-bold leading-tight">{t("pandit.loginTitle")}</h1>
           <p className="mt-1.5 text-sm text-muted">{t("pandit.loginSubtitle")}</p>
 

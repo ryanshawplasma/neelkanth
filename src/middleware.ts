@@ -15,7 +15,7 @@ async function readSession(req: NextRequest) {
 }
 
 // Route → allowed roles. Public pandit/admin entry points are excluded below.
-const USER_PROTECTED = ["/bookings", "/account", "/onboarding", "/notifications", "/checkout", "/consult/my"];
+const USER_PROTECTED = ["/bookings", "/account", "/onboarding", "/notifications", "/checkout", "/consult/my", "/support"];
 const PANDIT_PUBLIC = ["/pandit/login", "/pandit/register"];
 const ADMIN_PUBLIC = ["/admin/login"];
 

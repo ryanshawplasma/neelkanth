@@ -6,7 +6,7 @@ import type { ReactNode } from "react";
 import { Bell, CalendarClock, CircleUserRound, Flower2, LayoutDashboard, NotebookPen, Star, Wallet } from "lucide-react";
 import { useT } from "@/i18n/client";
 import { LanguageSwitch } from "@/components/ui/language-switch";
-import { Avatar } from "@/components/ui/misc";
+import { AccountAvatarButton, type SwitcherCurrent } from "@/components/accounts/account-switcher";
 import { cn } from "@/lib/utils";
 
 export type ShellUser = {
@@ -15,6 +15,8 @@ export type ShellUser = {
   unread: number;
   verified: boolean;
   isActive: boolean;
+  /** Signed-in account, for the account switcher. */
+  account: SwitcherCurrent;
 };
 
 const NAV = [
@@ -58,13 +60,12 @@ export function PanditShell({ user, children }: { user: ShellUser; children: Rea
                 </span>
               )}
             </Link>
-            <Link href="/pandit/profile" aria-label={t("pandit.navProfile")} className="relative rounded-full">
-              <Avatar src={user.photoUrl} name={user.name} size={34} className="ring-2 ring-border" />
+            <AccountAvatarButton area="pandit" current={{ ...user.account, name: user.name, avatarUrl: user.photoUrl }} size={34}>
               <span
-                className={cn("absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-surface", user.isActive ? "bg-success" : "bg-muted")}
+                className={cn("absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-surface", user.isActive ? "bg-success" : "bg-muted")}
                 title={user.isActive ? t("pandit.acceptingBookings") : t("pandit.notAccepting")}
               />
-            </Link>
+            </AccountAvatarButton>
           </div>
         </div>
       </header>

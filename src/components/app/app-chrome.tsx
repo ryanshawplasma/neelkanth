@@ -11,9 +11,9 @@ import { cn } from "@/lib/utils";
 /** Routes that get no app chrome at all (own full-screen layout). */
 const BARE = ["/login", "/onboarding"];
 /** Inner screens that bring their own PageHeader. */
-const NO_TOPBAR = ["/pooja/", "/chadhava/", "/prasad/", "/temple/", "/festivals/", "/library/", "/bookings/", "/pandits/", "/checkout/", "/search", "/notifications", "/legal/"];
+const NO_TOPBAR = ["/pooja/", "/chadhava/", "/prasad/", "/temple/", "/festivals/", "/library/", "/bookings/", "/pandits/", "/checkout/", "/search", "/notifications", "/legal/", "/support"];
 /** Screens with a sticky CTA where the bottom nav would be in the way. */
-const NO_BOTTOMNAV = ["/checkout/", "/pooja/", "/chadhava/", "/prasad/", "/temple/", "/library/", "/festivals/", "/bookings/", "/pandits/"];
+const NO_BOTTOMNAV = ["/checkout/", "/pooja/", "/chadhava/", "/prasad/", "/temple/", "/library/", "/festivals/", "/bookings/", "/pandits/", "/support"];
 
 const startsWithAny = (path: string, list: string[]) => list.some((p) => (p.endsWith("/") ? path.startsWith(p) : path === p || path.startsWith(p + "?")));
 

@@ -21,7 +21,7 @@ export default async function AdminSettingsPage() {
     <>
       <AdminPageHeader title={t("admin.settingsTitle")} subtitle={t("admin.settingsSubtitle")} />
 
-      <div className="grid gap-4 xl:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
         <div className="xl:col-span-2">
           <SettingsForm values={values} />
         </div>

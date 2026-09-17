@@ -28,8 +28,8 @@ export function AdminPageHeader({
             {backLabel}
           </Link>
         )}
-        <h1 className="truncate text-xl font-bold tracking-tight lg:text-2xl">{title}</h1>
-        {subtitle && <p className="mt-0.5 text-sm text-muted">{subtitle}</p>}
+        <h1 className="truncate text-xl font-bold tracking-tight max-sm:whitespace-normal max-sm:break-words lg:text-2xl">{title}</h1>
+        {subtitle && <p className="mt-0.5 break-words text-sm text-muted">{subtitle}</p>}
       </div>
       {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
     </div>
@@ -73,10 +73,10 @@ export function Panel({
   );
 }
 
-/** Definition row used across detail pages. */
+/** Definition row used across detail pages. Phones stack the label above the value. */
 export function DetailRow({ label, children, className }: { label: ReactNode; children: ReactNode; className?: string }) {
   return (
-    <div className={cn("grid grid-cols-[9rem_1fr] items-start gap-3 py-1.5 text-sm", className)}>
+    <div className={cn("grid grid-cols-[9rem_1fr] items-start gap-3 py-1.5 text-sm max-sm:grid-cols-1 max-sm:gap-0.5 max-sm:py-2", className)}>
       <dt className="text-xs font-medium uppercase tracking-wide text-muted">{label}</dt>
       <dd className="min-w-0 break-words">{children}</dd>
     </div>

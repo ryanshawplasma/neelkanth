@@ -32,7 +32,7 @@ export default async function AdminNotificationsPage() {
         <KpiCard label={t("admin.pushSubscribers")} value={stats.subs} sub={env.vapidConfigured ? t("admin.vapidOn") : t("admin.vapidOff")} icon={<Bell className="h-4 w-4" />} tone={stats.subs ? "gold" : "info"} />
       </div>
 
-      <div className="mt-4 grid gap-4 xl:grid-cols-3">
+      <div className="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-3">
         <Panel title={t("admin.campaignComposer")} subtitle={t("admin.campaignComposerHint")} className="xl:col-span-2">
           <CampaignComposer counts={counts} cities={cities} />
         </Panel>
