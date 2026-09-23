@@ -11,6 +11,9 @@ import { labelOf, PANDIT_CLASSIFICATIONS } from "@/lib/constants";
 import type { CategoryData, ContentCardData, FestivalCardData, PanditCardData, ServiceCardData, TempleCardData } from "@/lib/app/types";
 import { FavoriteButton } from "./bits";
 
+/** Today in India (the same on the server and in the browser), for hiding dates that have passed. */
+const todayInIndia = () => new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata" }).format(new Date());
+
 /* ─────────────────────── layout helpers ─────────────────────── */
 
 /** Horizontal snap scroller used by every home rail. */
@@ -74,7 +77,7 @@ function ServiceMeta({ s }: { s: ServiceCardData }) {
           {t("app.durationLabel", { n: s.durationMin })}
         </p>
       ) : null}
-      {s.nextDate && (
+      {s.nextDate && s.nextDate >= todayInIndia() && (
         <p className="mt-0.5 flex items-center gap-1 truncate text-[11.5px] font-medium text-primary-700">
           <CalendarDays className="h-3 w-3 shrink-0" />
           {t("app.nextOn", { date: formatDate(s.nextDate, locale, { day: "numeric", month: "short" }) })}
@@ -134,10 +137,14 @@ export function ServiceCard({
         <ServiceMeta s={s} />
         <div className="mt-2 flex items-center justify-between gap-2">
           <PriceRow s={s} />
-          <span className="flex items-center gap-0.5 text-[11px] text-muted">
-            <Star className="h-3 w-3 fill-gold text-gold" />
-            <span className="font-semibold text-foreground">{s.ratingAvg.toFixed(1)}</span>
-          </span>
+          {s.ratingCount > 0 ? (
+            <span className="flex items-center gap-0.5 text-[11px] text-muted">
+              <Star className="h-3 w-3 fill-gold text-gold" />
+              <span className="font-semibold text-foreground">{s.ratingAvg.toFixed(1)}</span>
+            </span>
+          ) : (
+            <span className="rounded-full bg-success/10 px-1.5 py-px text-[10.5px] font-semibold text-success">{t("app.newService")}</span>
+          )}
         </div>
         {s.bookingCount > 0 && (
           <p className="mt-1 flex items-center gap-1 text-[11px] text-success">
@@ -167,11 +174,15 @@ export function ServiceRow({ s, favorited, className }: { s: ServiceCardData; fa
         <ServiceMeta s={s} />
         <div className="mt-1.5 flex items-center justify-between gap-2">
           <PriceRow s={s} />
-          <span className="flex items-center gap-0.5 text-[11px] text-muted">
-            <Star className="h-3 w-3 fill-gold text-gold" />
-            <span className="font-semibold text-foreground">{s.ratingAvg.toFixed(1)}</span>
-            {s.ratingCount > 0 && <span>({s.ratingCount})</span>}
-          </span>
+          {s.ratingCount > 0 ? (
+            <span className="flex items-center gap-0.5 text-[11px] text-muted">
+              <Star className="h-3 w-3 fill-gold text-gold" />
+              <span className="font-semibold text-foreground">{s.ratingAvg.toFixed(1)}</span>
+              <span>({s.ratingCount})</span>
+            </span>
+          ) : (
+            <span className="rounded-full bg-success/10 px-1.5 py-px text-[10.5px] font-semibold text-success">{t("app.newService")}</span>
+          )}
         </div>
         {s.bookingCount > 0 && <p className="mt-0.5 text-[11px] text-success">{t("app.bookedCount", { n: s.bookingCount })}</p>}
       </div>
@@ -203,7 +214,7 @@ export function TempleCard({ tpl, wide }: { tpl: TempleCardData; wide?: boolean 
         )}
       </div>
       <div className="p-2.5">
-        <h3 className="line-clamp-1 text-[13.5px] font-semibold leading-tight">{loc(tpl, "name")}</h3>
+        <h3 className="line-clamp-2 min-h-[2.5em] text-[13.5px] font-semibold leading-tight">{loc(tpl, "name")}</h3>
         <p className="mt-0.5 line-clamp-1 text-[11.5px] text-muted">
           {loc(tpl, "deity") ? `${loc(tpl, "deity")} · ` : ""}
           {tpl.city}

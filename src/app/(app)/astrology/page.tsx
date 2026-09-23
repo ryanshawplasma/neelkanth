@@ -2,7 +2,8 @@ import { cookies } from "next/headers";
 import { getT } from "@/i18n/server";
 import { getCurrentUser } from "@/lib/auth";
 import { getFavoriteIds, listConsultations, listJyotishis, listServices } from "@/lib/app/queries";
-import { CITY_COOKIE, cityByName, cityBySlug } from "@/lib/app/cities";
+import { CITY_COOKIE } from "@/lib/app/cities";
+import { resolveCity } from "@/lib/app/launch";
 import { getPanchang } from "@/lib/panchang";
 import { allRashifal } from "@/lib/app/rashifal";
 import { CONSULT_TOPICS, pickBi } from "@/lib/constants";
@@ -16,7 +17,7 @@ export const dynamic = "force-dynamic";
 export default async function AstrologyPage() {
   const { t, locale } = await getT();
   const [user, jar] = await Promise.all([getCurrentUser(), cookies()]);
-  const city = cityBySlug(jar.get(CITY_COOKIE)?.value ?? cityByName(user?.city)?.slug);
+  const city = await resolveCity(jar.get(CITY_COOKIE)?.value, user?.city);
   const p = getPanchang(new Date(), city.lat, city.lng);
   const today = toDateKey();
   const rashifal = allRashifal(today, `${p.nakshatra.index}-${p.tithi.index}`);

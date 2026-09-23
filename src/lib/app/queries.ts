@@ -2,6 +2,8 @@ import "server-only";
 import type { Prisma, ServiceType } from "@prisma/client";
 import { db } from "@/lib/db";
 import { addDays, toDateKey } from "@/lib/utils";
+import { getLaunchScope, isServiceInScope, serviceScope, templeScope } from "./launch";
+import { isCity } from "./cities";
 
 /** Columns every service card needs — keeps payloads small. */
 export const serviceCardSelect = {
@@ -35,36 +37,44 @@ export type ServiceCard = Prisma.ServiceGetPayload<{ select: typeof serviceCardS
 
 const activeService = { active: true } satisfies Prisma.ServiceWhereInput;
 
+/** Active services inside the launch-city scope (see src/lib/app/launch.ts). */
+async function scopedServices(): Promise<Prisma.ServiceWhereInput> {
+  const scope = await getLaunchScope();
+  return { ...activeService, AND: [serviceScope(scope)] };
+}
+
 /* ─────────────────────────── Home ─────────────────────────── */
 
 export async function getHomeData() {
   const today = toDateKey();
   const horizon = toDateKey(addDays(new Date(), 200));
+  const scope = await getLaunchScope();
+  const inScope = await scopedServices();
 
   const [banners, categories, featured, trending, chadhava, temples, atHome, astrology, content, festivals] = await Promise.all([
     db.banner.findMany({ where: { active: true, placement: "home" }, orderBy: { sortOrder: "asc" }, take: 6 }),
     db.category.findMany({ where: { active: true }, orderBy: { sortOrder: "asc" }, take: 12 }),
     db.service.findMany({
-      where: { ...activeService, type: "ONLINE_POOJA", featured: true },
+      where: { ...inScope, type: "ONLINE_POOJA", featured: true },
       select: serviceCardSelect,
       orderBy: [{ sortOrder: "asc" }, { bookingCount: "desc" }],
       take: 10,
     }),
     db.service.findMany({
-      where: { ...activeService, trending: true },
+      where: { ...inScope, trending: true },
       select: serviceCardSelect,
       orderBy: { bookingCount: "desc" },
       take: 10,
     }),
-    db.service.findMany({ where: { ...activeService, type: "CHADHAVA" }, select: serviceCardSelect, orderBy: { sortOrder: "asc" }, take: 10 }),
+    db.service.findMany({ where: { ...inScope, type: "CHADHAVA" }, select: serviceCardSelect, orderBy: { sortOrder: "asc" }, take: 10 }),
     db.temple.findMany({
-      where: { active: true },
+      where: { active: true, ...templeScope(scope) },
       orderBy: [{ featured: "desc" }, { nameEn: "asc" }],
       take: 10,
       select: { id: true, slug: true, nameEn: true, nameHi: true, city: true, state: true, coverUrl: true, images: true, deityEn: true, deityHi: true, liveDarshanUrl: true },
     }),
-    db.service.findMany({ where: { ...activeService, type: "PANDIT_AT_HOME" }, select: serviceCardSelect, orderBy: { sortOrder: "asc" }, take: 10 }),
-    db.service.findMany({ where: { ...activeService, type: "ASTROLOGY" }, select: serviceCardSelect, take: 4 }),
+    db.service.findMany({ where: { ...inScope, type: "PANDIT_AT_HOME" }, select: serviceCardSelect, orderBy: { sortOrder: "asc" }, take: 10 }),
+    db.service.findMany({ where: { ...inScope, type: "ASTROLOGY" }, select: serviceCardSelect, take: 4 }),
     db.contentItem.findMany({
       where: { active: true },
       orderBy: [{ featured: "desc" }, { views: "desc" }],
@@ -75,11 +85,11 @@ export async function getHomeData() {
       where: { active: true, date: { gte: today, lte: horizon } },
       orderBy: { date: "asc" },
       take: 8,
-      include: { services: { where: activeService, take: 1, select: { slug: true } } },
+      include: { services: { where: inScope, take: 1, select: { slug: true } } },
     }),
   ]);
 
-  return { banners, categories, featured, trending, chadhava, temples, atHome, astrology, content, festivals };
+  return { banners, categories, featured, trending, chadhava, temples, atHome, astrology, content, festivals, localCity: scope.only ? scope.city : null };
 }
 
 /* ─────────────────────────── Catalog listing ─────────────────────────── */
@@ -111,7 +121,7 @@ export function serviceOrderBy(sort: ServiceFilters["sort"]): Prisma.ServiceOrde
 }
 
 export async function listServices(f: ServiceFilters = {}) {
-  const where: Prisma.ServiceWhereInput = { ...activeService };
+  const where: Prisma.ServiceWhereInput = await scopedServices();
   if (f.type) where.type = Array.isArray(f.type) ? { in: f.type } : f.type;
   if (f.deity) where.OR = [{ deityEn: { contains: f.deity } }, { deityHi: { contains: f.deity } }];
   if (f.temple) where.temple = { slug: f.temple };
@@ -120,6 +130,7 @@ export async function listServices(f: ServiceFilters = {}) {
   if (f.q?.trim()) {
     const q = f.q.trim();
     where.AND = [
+      ...((where.AND as Prisma.ServiceWhereInput[] | undefined) ?? []),
       {
         OR: [
           { nameEn: { contains: q } },
@@ -150,7 +161,8 @@ export async function deityOptions(type?: ServiceType | ServiceType[]) {
 }
 
 export async function templeOptions() {
-  return db.temple.findMany({ where: { active: true }, select: { slug: true, nameEn: true, nameHi: true }, orderBy: { nameEn: "asc" }, take: 30 });
+  const scope = await getLaunchScope();
+  return db.temple.findMany({ where: { active: true, ...templeScope(scope) }, select: { slug: true, nameEn: true, nameHi: true }, orderBy: { nameEn: "asc" }, take: 30 });
 }
 
 export async function categoryOptions(type?: ServiceType) {
@@ -187,7 +199,7 @@ export type ServiceDetail = NonNullable<Awaited<ReturnType<typeof getServiceBySl
 export async function getRelatedServices(service: { id: string; type: ServiceType; categoryId: string | null; templeId: string | null }) {
   return db.service.findMany({
     where: {
-      ...activeService,
+      ...(await scopedServices()),
       id: { not: service.id },
       OR: [
         service.categoryId ? { categoryId: service.categoryId } : {},
@@ -204,7 +216,7 @@ export async function getRelatedServices(service: { id: string; type: ServiceTyp
 /* ─────────────────────────── Temples ─────────────────────────── */
 
 export async function listTemples(q?: string) {
-  const where: Prisma.TempleWhereInput = { active: true };
+  const where: Prisma.TempleWhereInput = { active: true, ...templeScope(await getLaunchScope()) };
   if (q?.trim()) {
     where.OR = [
       { nameEn: { contains: q.trim() } },
@@ -254,7 +266,7 @@ export async function festivalsInMonth(year: number, month: number) {
 export async function getFestivalBySlug(slug: string) {
   return db.festival.findFirst({
     where: { slug, active: true },
-    include: { services: { where: activeService, select: serviceCardSelect, take: 8 } },
+    include: { services: { where: await scopedServices(), select: serviceCardSelect, take: 8 } },
   });
 }
 
@@ -289,8 +301,15 @@ export async function getContentBySlug(slug: string) {
 
 export type PanditFilters = { classification?: string; city?: string; language?: string; verifiedOnly?: boolean; q?: string };
 
-export async function listPandits(f: PanditFilters = {}) {
+export async function listPandits(f: PanditFilters = {}, opts: { anyCity?: boolean } = {}) {
   const where: Prisma.PanditProfileWhereInput = { isActive: true, kycStatus: "APPROVED" };
+  const scope = await getLaunchScope();
+  if (scope.only && scope.city && !opts.anyCity) {
+    // Local mode: pandits who live in the launch city (their city is free text, so match in code).
+    const city = scope.city;
+    const all = await db.panditProfile.findMany({ where: { isActive: true, kycStatus: "APPROVED" }, select: { id: true, city: true } });
+    where.id = { in: all.filter((p) => isCity(p.city, city)).map((p) => p.id) };
+  }
   if (f.classification && f.classification !== "ALL") where.classification = f.classification as Prisma.EnumPanditClassificationFilter["equals"];
   if (f.city && f.city !== "ALL") where.city = { contains: f.city };
   if (f.language && f.language !== "ALL") where.languages = { contains: `"${f.language}"` };
@@ -309,6 +328,7 @@ export async function listPandits(f: PanditFilters = {}) {
 }
 
 export async function panditCities() {
+  if ((await getLaunchScope()).only) return [];
   const rows = await db.panditProfile.findMany({ where: { isActive: true, kycStatus: "APPROVED", city: { not: null } }, select: { city: true }, distinct: ["city"], take: 30 });
   return rows.map((r) => r.city).filter((c): c is string => !!c);
 }
@@ -324,9 +344,9 @@ export async function getPanditById(id: string) {
   });
 }
 
-/** Astrologers for the /astrology hub. */
+/** Astrologers for the /astrology hub. Consultations happen by phone or video, so any city. */
 export async function listJyotishis(take = 8) {
-  return listPandits({ classification: "JYOTISHI" }).then((rows) => rows.slice(0, take));
+  return listPandits({ classification: "JYOTISHI" }, { anyCity: true }).then((rows) => rows.slice(0, take));
 }
 
 /* ─────────────────────────── Bookings ─────────────────────────── */
@@ -401,7 +421,7 @@ export async function searchAll(q: string) {
   const [services, temples, festivals, content] = await Promise.all([
     listServices({ q: term, take: 20 }),
     db.temple.findMany({
-      where: { active: true, OR: [{ nameEn: { contains: term } }, { nameHi: { contains: term } }, { city: { contains: term } }, { deityEn: { contains: term } }, { deityHi: { contains: term } }] },
+      where: { active: true, ...templeScope(await getLaunchScope()), OR: [{ nameEn: { contains: term } }, { nameHi: { contains: term } }, { city: { contains: term } }, { deityEn: { contains: term } }, { deityHi: { contains: term } }] },
       take: 10,
       select: { id: true, slug: true, nameEn: true, nameHi: true, city: true, state: true, coverUrl: true, images: true, deityEn: true, deityHi: true, liveDarshanUrl: true },
     }),
@@ -418,4 +438,10 @@ export async function searchAll(q: string) {
     }),
   ]);
   return { services, temples, festivals, content };
+}
+
+/** Whether a service can be booked under the current launch-city scope. */
+export async function serviceAvailableHere(service: { templeId: string | null }) {
+  const scope = await getLaunchScope();
+  return { available: isServiceInScope(scope, service.templeId), city: scope.only ? scope.city : null };
 }

@@ -132,6 +132,8 @@ export const SETTING_KEYS = [
   "maintenance_banner_hi",
   "terms_url",
   "privacy_url",
+  "launch_city",
+  "launch_city_only",
 ] as const;
 export type SettingKey = (typeof SETTING_KEYS)[number];
 

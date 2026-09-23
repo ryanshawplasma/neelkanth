@@ -1,7 +1,7 @@
 import "server-only";
 import { db } from "./db";
 import { notifyUser } from "./notify";
-import { addDays, daysUntil, parseJson, toDateKey, formatDate } from "./utils";
+import { addDays, daysUntil, parseJson, rollForwardWeekly, toDateKey, formatDate } from "./utils";
 
 /**
  * Festival reminders — "push near-date things".
@@ -122,7 +122,24 @@ export async function runScheduledCampaigns(now = new Date()) {
   return { campaigns: due.length, sent: total };
 }
 
+/**
+ * Weekly services store their next performance date. Once it passes, move it forward in whole
+ * weeks (keeping the weekday) so listings stay current and fixed-date offerings (chadhava, prasad)
+ * never ask to be booked in the past. Festival-linked services keep their date: that occasion is over.
+ */
+export async function rollServiceDates(now = new Date()) {
+  const today = toDateKey(now);
+  const stale = await db.service.findMany({ where: { nextDate: { lt: today }, festivalId: null }, select: { id: true, nextDate: true } });
+  for (const s of stale) await db.service.update({ where: { id: s.id }, data: { nextDate: rollForwardWeekly(s.nextDate, today) } });
+  return { rolled: stale.length };
+}
+
 export async function runAllReminders(now = new Date()) {
-  const [festival, booking, campaigns] = await Promise.all([runFestivalReminders(now), runBookingReminders(now), runScheduledCampaigns(now)]);
-  return { festival, booking, campaigns, ranAt: now.toISOString() };
+  const [festival, booking, campaigns, serviceDates] = await Promise.all([
+    runFestivalReminders(now),
+    runBookingReminders(now),
+    runScheduledCampaigns(now),
+    rollServiceDates(now),
+  ]);
+  return { festival, booking, campaigns, serviceDates, ranAt: now.toISOString() };
 }

@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { audit, requireAdmin } from "@/lib/auth";
 import { SETTING_KEYS } from "./util";
+import { findCity } from "@/lib/app/cities";
 
 export type Result = { ok: boolean; error?: string };
 
@@ -19,7 +20,10 @@ export async function saveSettingsAction(values: Record<string, string>): Promis
     if (!allowed.has(key)) continue;
     const parsed = valueSchema.safeParse(value);
     if (!parsed.success) return { ok: false, error: "admin.errInvalidInput" };
-    entries.push([key, parsed.data.trim()]);
+    const clean = parsed.data.trim();
+    if (key === "launch_city" && clean && !findCity(clean)) return { ok: false, error: "admin.errInvalidInput" };
+    if (key === "launch_city_only" && clean !== "1" && clean !== "0" && clean !== "") return { ok: false, error: "admin.errInvalidInput" };
+    entries.push([key, clean]);
   }
   if (!entries.length) return { ok: false, error: "admin.errInvalidInput" };
 

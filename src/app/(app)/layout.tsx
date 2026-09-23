@@ -2,7 +2,8 @@ import type { ReactNode } from "react";
 import { cookies } from "next/headers";
 import { getCurrentUser } from "@/lib/auth";
 import { getUnreadCount } from "@/lib/app/queries";
-import { CITY_COOKIE, cityByName, cityBySlug } from "@/lib/app/cities";
+import { CITY_COOKIE } from "@/lib/app/cities";
+import { resolveCity } from "@/lib/app/launch";
 import { getLocale } from "@/i18n/server";
 import { loc } from "@/lib/utils";
 import { AppChrome } from "@/components/app/app-chrome";
@@ -12,7 +13,7 @@ import { IntroSplash } from "@/components/app/intro-splash";
 export default async function AppLayout({ children }: { children: ReactNode }) {
   const [user, jar, locale] = await Promise.all([getCurrentUser(), cookies(), getLocale()]);
   const unread = await getUnreadCount(user?.id);
-  const city = cityBySlug(jar.get(CITY_COOKIE)?.value ?? cityByName(user?.city)?.slug);
+  const city = await resolveCity(jar.get(CITY_COOKIE)?.value, user?.city);
 
   return (
     <div className="bg-devotional flex min-h-dvh flex-1 justify-center">

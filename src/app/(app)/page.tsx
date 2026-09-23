@@ -4,9 +4,10 @@ import { CalendarDays, ChevronRight, Search, Sparkles, Sun, Sunset } from "lucid
 import { getT } from "@/i18n/server";
 import { getCurrentUser } from "@/lib/auth";
 import { getFavoriteIds, getHomeData } from "@/lib/app/queries";
-import { CITY_COOKIE, cityByName, cityBySlug } from "@/lib/app/cities";
+import { CITY_COOKIE } from "@/lib/app/cities";
+import { resolveCity } from "@/lib/app/launch";
 import { getPanchang, fmtPeriod, fmtTime } from "@/lib/panchang";
-import { formatDate, toDateKey } from "@/lib/utils";
+import { formatDate, loc, toDateKey } from "@/lib/utils";
 import { biText } from "@/lib/app/helpers";
 import { EnablePushButton } from "@/components/push-register";
 import { BannerCarousel } from "@/components/app/bits";
@@ -16,7 +17,7 @@ import type { BannerData, CategoryData, ContentCardData, FestivalCardData, Servi
 export default async function HomePage() {
   const { t, locale } = await getT();
   const [user, jar] = await Promise.all([getCurrentUser(), cookies()]);
-  const city = cityBySlug(jar.get(CITY_COOKIE)?.value ?? cityByName(user?.city)?.slug);
+  const city = await resolveCity(jar.get(CITY_COOKIE)?.value, user?.city);
   const [data, favIds] = await Promise.all([getHomeData(), getFavoriteIds(user?.id)]);
   const p = getPanchang(new Date(), city.lat, city.lng);
 
@@ -150,7 +151,11 @@ export default async function HomePage() {
 
       {/* temples */}
       {data.temples.length > 0 && (
-        <Section title={t("app.famousTemples")} subtitle={t("app.famousTemplesSub")} href="/temples">
+        <Section
+          title={data.localCity ? t("app.templesIn", { city: loc(data.localCity, "name", locale) }) : t("app.famousTemples")}
+          subtitle={t("app.famousTemplesSub")}
+          href="/temples"
+        >
           <Scroller>
             {data.temples.map((tp) => (
               <TempleCard key={tp.id} tpl={tp as TempleCardData} />

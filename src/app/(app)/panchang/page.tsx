@@ -3,7 +3,8 @@ import { getT } from "@/i18n/server";
 import { getCurrentUser } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { getPanchang, serializePanchang } from "@/lib/panchang";
-import { CITIES, CITY_COOKIE, cityByName, cityBySlug } from "@/lib/app/cities";
+import { CITIES, CITY_COOKIE } from "@/lib/app/cities";
+import { resolveCity } from "@/lib/app/launch";
 import { addDays, fromDateKey, toDateKey } from "@/lib/utils";
 import { PanchangView } from "@/components/app/panchang-view";
 
@@ -13,7 +14,7 @@ export default async function PanchangPage({ searchParams }: { searchParams: Pro
   const { t } = await getT();
   const sp = await searchParams;
   const [user, jar] = await Promise.all([getCurrentUser(), cookies()]);
-  const city = cityBySlug(jar.get(CITY_COOKIE)?.value ?? cityByName(user?.city)?.slug);
+  const city = await resolveCity(jar.get(CITY_COOKIE)?.value, user?.city);
 
   const dateParam = Array.isArray(sp.date) ? sp.date[0] : sp.date;
   const dateKey = dateParam && /^\d{4}-\d{2}-\d{2}$/.test(dateParam) ? dateParam : toDateKey();

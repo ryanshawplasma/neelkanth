@@ -563,6 +563,13 @@ export const admin = {
 
     // ── Settings ──
     settingsTitle: "Settings",
+    settingsLaunch: "Launch city",
+    settingsLaunchHint: "The city you are starting in. It sets the default location for panchang timings.",
+    setLaunchCity: "City",
+    launchNone: "No launch city (all of India)",
+    setLaunchOnly: "Local mode: serve only this city",
+    setLaunchOnlyHint: "The app shows only this city's temples and their poojas, pandits who live here, and takes home visits and deliveries only inside the city. Online consultations and the library stay open to everyone. Nothing is deleted: turn it off to show all of India again.",
+    launchLive: "Live in {city}",
     settingsSubtitle: "Platform-wide values used across the app",
     settingsBrand: "Brand",
     settingsSupport: "Support",
@@ -1196,6 +1203,13 @@ export const admin = {
 
     // ── Settings ──
     settingsTitle: "सेटिंग्स",
+    settingsLaunch: "लॉन्च शहर",
+    settingsLaunchHint: "जिस शहर से आप शुरुआत कर रहे हैं। पंचांग के समय के लिए यही डिफ़ॉल्ट स्थान होगा।",
+    setLaunchCity: "शहर",
+    launchNone: "कोई लॉन्च शहर नहीं (पूरा भारत)",
+    setLaunchOnly: "लोकल मोड: केवल इसी शहर में सेवा",
+    setLaunchOnlyHint: "ऐप केवल इसी शहर के मंदिर और उनकी पूजाएँ, यहाँ रहने वाले पंडित दिखाता है, और घर पर पूजा व डिलीवरी केवल इसी शहर में लेता है। ऑनलाइन परामर्श और पुस्तकालय सबके लिए खुले रहते हैं। कुछ भी हटाया नहीं जाता: पूरा भारत फिर से दिखाने के लिए इसे बंद करें।",
+    launchLive: "{city} में लाइव",
     settingsSubtitle: "पूरे ऐप में उपयोग होने वाले मान",
     settingsBrand: "ब्रांड",
     settingsSupport: "सहायता",

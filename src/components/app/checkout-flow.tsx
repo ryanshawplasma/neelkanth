@@ -47,7 +47,10 @@ export function CheckoutFlow({
   panditId,
   family,
   user,
+  serviceArea = null,
 }: {
+  /** Launch-city mode: home visits and deliveries only inside this city. */
+  serviceArea?: { nameEn: string; nameHi: string; stateEn: string } | null;
   service: CheckoutService;
   packages: PackageData[];
   addons: AddonData[];
@@ -95,8 +98,9 @@ export function CheckoutFlow({
   const [wantsPrasad, setWantsPrasad] = useState(isPrasad);
   const needsAddress = atHome || isPrasad || wantsPrasad;
   const [addressLine, setAddressLine] = useState(user.addressLine ?? "");
-  const [city, setCity] = useState(user.city ?? "");
-  const [stateName, setStateName] = useState(user.state ?? "");
+  const areaName = serviceArea ? (locale === "hi" ? serviceArea.nameHi : serviceArea.nameEn) : null;
+  const [city, setCity] = useState(serviceArea ? serviceArea.nameEn : (user.city ?? ""));
+  const [stateName, setStateName] = useState(serviceArea ? serviceArea.stateEn : (user.state ?? ""));
   const [pincode, setPincode] = useState(user.pincode ?? "");
 
   /* ── step 4: sankalp + coupon ── */
@@ -421,8 +425,8 @@ export function CheckoutFlow({
                   <Textarea value={addressLine} onChange={(e) => setAddressLine(e.target.value)} rows={2} className="min-h-16" />
                 </Field>
                 <div className="grid grid-cols-2 gap-2.5">
-                  <Field label={t("common.city")} required>
-                    <Input value={city} onChange={(e) => setCity(e.target.value)} />
+                  <Field label={t("common.city")} required hint={areaName ? t("app.serviceAreaHint", { city: areaName }) : undefined}>
+                    <Input value={areaName ?? city} onChange={(e) => setCity(e.target.value)} readOnly={!!serviceArea} aria-readonly={!!serviceArea} className={serviceArea ? "bg-surface-2" : undefined} />
                   </Field>
                   <Field label={t("common.pincode")} required>
                     <Input value={pincode} onChange={(e) => setPincode(e.target.value)} inputMode="numeric" maxLength={6} />

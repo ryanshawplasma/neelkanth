@@ -34,12 +34,15 @@ export function PackagePicker({
   packages,
   addons,
   ctaLabel,
+  unavailableNote,
 }: {
   serviceSlug: string;
   basePrice: number;
   packages: PackageData[];
   addons: AddonData[];
   ctaLabel: string;
+  /** Set when the service can't be booked here (launch-city mode): shown instead of the button. */
+  unavailableNote?: string;
 }) {
   const t = useT();
   const loc = useLoc();
@@ -174,12 +177,18 @@ export function PackagePicker({
               <p className="text-[11px] leading-none text-muted">{t("common.total")}</p>
               <p className="mt-1 text-[18px] font-bold leading-none">{formatINR(total, locale)}</p>
             </div>
-            <Link
-              href={href}
-              className="ml-auto inline-flex h-12 flex-1 items-center justify-center rounded-2xl bg-primary px-5 text-[15px] font-semibold text-white shadow-sm active:bg-primary-700"
-            >
-              {ctaLabel}
-            </Link>
+            {unavailableNote ? (
+              <p className="ml-auto flex min-h-12 flex-1 items-center justify-center rounded-2xl bg-surface-2 px-4 text-center text-[13px] font-semibold text-muted">
+                {unavailableNote}
+              </p>
+            ) : (
+              <Link
+                href={href}
+                className="ml-auto inline-flex h-12 flex-1 items-center justify-center rounded-2xl bg-primary px-5 text-[15px] font-semibold text-white shadow-sm active:bg-primary-700"
+              >
+                {ctaLabel}
+              </Link>
+            )}
           </div>
         </div>
       </div>

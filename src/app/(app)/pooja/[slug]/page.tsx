@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import { CalendarDays, Clock3, MapPin, Sparkles, Star, Users } from "lucide-react";
 import { getT } from "@/i18n/server";
 import { getCurrentUser } from "@/lib/auth";
-import { getFavoriteIds, getRelatedServices, getServiceBySlug } from "@/lib/app/queries";
+import { getFavoriteIds, getRelatedServices, getServiceBySlug, serviceAvailableHere } from "@/lib/app/queries";
 import { formatDate, formatINR, loc, locJson, parseJson } from "@/lib/utils";
 import { ctaKeyFor, formatSlot, imageOf } from "@/lib/app/helpers";
 import { Accordion, Avatar, Stars } from "@/components/ui/misc";
@@ -32,7 +32,7 @@ export default async function ServiceDetailPage({ params }: { params: Promise<{ 
   if (!service) notFound();
 
   const user = await getCurrentUser();
-  const [related, favIds] = await Promise.all([getRelatedServices(service), getFavoriteIds(user?.id)]);
+  const [related, favIds, here] = await Promise.all([getRelatedServices(service), getFavoriteIds(user?.id), serviceAvailableHere(service)]);
 
   const name = loc(service, "name", locale);
   const images = parseJson<string[]>(service.images, []);
@@ -87,7 +87,11 @@ export default async function ServiceDetailPage({ params }: { params: Promise<{ 
         )}
 
         <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[12px] text-muted">
-          <Stars value={service.ratingAvg} count={service.ratingCount} />
+          {service.ratingCount > 0 ? (
+            <Stars value={service.ratingAvg} count={service.ratingCount} />
+          ) : (
+            <span className="rounded-full bg-success/10 px-2 py-0.5 text-[11.5px] font-semibold text-success">{t("app.newService")}</span>
+          )}
           {service.bookingCount > 0 && (
             <span className="flex items-center gap-1 text-success">
               <Users className="h-3.5 w-3.5" /> {t("app.bookedCount", { n: service.bookingCount })}
@@ -184,6 +188,7 @@ export default async function ServiceDetailPage({ params }: { params: Promise<{ 
         packages={service.packages as PackageData[]}
         addons={service.addons as AddonData[]}
         ctaLabel={t(ctaKeyFor(service.type))}
+        unavailableNote={!here.available && here.city ? t("app.notAvailableIn", { city: loc(here.city, "name", locale) }) : undefined}
       />
 
       {/* faq */}

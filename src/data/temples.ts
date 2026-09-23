@@ -18,16 +18,18 @@ export type TempleSeed = {
   state: string;
   descriptionEn: string;
   descriptionHi: string;
-  historyEn: string;
-  historyHi: string;
-  timings: string;
-  latitude: number;
-  longitude: number;
+  historyEn: string | null;
+  historyHi: string | null;
+  timings: string | null;
+  latitude: number | null;
+  longitude: number | null;
   liveDarshanUrl: string | null;
   featured: boolean;
 };
 
-export const TEMPLES: TempleSeed[] = [
+import { LOCAL_TEMPLES } from "./local-temples";
+
+const NATIONAL_TEMPLES: TempleSeed[] = [
   {
     slug: "kashi-vishwanath",
     nameEn: "Kashi Vishwanath Temple",
@@ -447,6 +449,9 @@ export const TEMPLES: TempleSeed[] = [
     featured: true,
   },
 ];
+
+/** Famous temples across India, then the launch city's own (./local-temples). */
+export const TEMPLES: TempleSeed[] = [...NATIONAL_TEMPLES, ...LOCAL_TEMPLES];
 
 export const TEMPLE_SLUGS = TEMPLES.map((t) => t.slug);
 export type TempleSlug = (typeof TEMPLES)[number]["slug"];

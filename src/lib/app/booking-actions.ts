@@ -9,6 +9,7 @@ import { createPaymentForBooking, refundBooking } from "@/lib/payments";
 import { recomputePanditRating, recomputeServiceRating } from "@/lib/bookings";
 import { generateBookingCode, toDateKey, toJson, addDays } from "@/lib/utils";
 import type { ActionResult } from "@/lib/auth-actions";
+import { getLaunchScope, isAddressInScope, isServiceInScope } from "./launch";
 
 const devoteeSchema = z.object({
   name: z.string().trim().min(2).max(60),
@@ -75,6 +76,8 @@ export async function createBookingAction(input: CreateBookingInput): Promise<Ac
 
   const service = await db.service.findFirst({ where: { slug: v.serviceSlug, active: true }, include: { packages: true, addons: true } });
   if (!service) return { ok: false, error: "serviceNotFound" };
+  const scope = await getLaunchScope();
+  if (!isServiceInScope(scope, service.templeId)) return { ok: false, error: "notAvailableInCity" };
 
   const pkg = v.packageSlug ? service.packages.find((p) => p.slug === v.packageSlug) : service.packages[0];
   if (service.packages.length > 0 && !pkg) return { ok: false, error: "packageNotFound" };
@@ -94,6 +97,7 @@ export async function createBookingAction(input: CreateBookingInput): Promise<Ac
 
   const needsAddress = service.type === "PANDIT_AT_HOME" || service.type === "PRASAD" || v.prasadDelivery;
   if (needsAddress && (!v.addressLine || !v.city || !v.pincode)) return { ok: false, error: "addressRequired" };
+  if (needsAddress && !isAddressInScope(scope, v.city)) return { ok: false, error: "serviceAreaOnly" };
 
   const addons = service.addons.filter((a) => v.addonSlugs.includes(a.slug));
   const amountBase = pkg?.price ?? service.basePrice;

@@ -47,6 +47,24 @@ export function addDays(d: Date, n: number) {
   return c;
 }
 
+/**
+ * A weekly service date that has passed, moved forward in whole weeks to today or later, so the
+ * weekday is kept (Mondays for Shiva, Tuesdays for Hanuman…). Dates today or later are unchanged.
+ */
+export function rollForwardWeekly(dateKey: string | null | undefined, today: string = toDateKey()): string | null {
+  if (!dateKey) return null;
+  if (dateKey >= today) return dateKey;
+  const behind = Math.round((fromDateKey(today).getTime() - fromDateKey(dateKey).getTime()) / 86400000);
+  return toDateKey(addDays(fromDateKey(dateKey), Math.ceil(behind / 7) * 7));
+}
+
+/** The date to offer for a service: weekly dates roll forward; a passed festival date offers none. */
+export function effectiveServiceDate(s: { nextDate: string | null; festivalId?: string | null }, today: string = toDateKey()) {
+  if (!s.nextDate) return null;
+  if (s.festivalId) return s.nextDate >= today ? s.nextDate : null;
+  return rollForwardWeekly(s.nextDate, today);
+}
+
 export function daysUntil(dateKey: string, from: Date = new Date()) {
   const target = fromDateKey(dateKey);
   const start = new Date(from.getFullYear(), from.getMonth(), from.getDate());

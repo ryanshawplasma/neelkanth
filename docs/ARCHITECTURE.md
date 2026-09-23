@@ -120,6 +120,30 @@ shrinks photos before upload (`uploadFile` in `src/components/ui/image-upload.ts
 re-encoded, EXIF/GPS stripped) because Vercel rejects request bodies over 4.5 MB; the server caps files
 at 4 MB and rate-limits non-admin database uploads (40 an hour, 60 MB a day).
 
+## Launch city (local mode)
+
+Admin → Settings → Launch city stores `launch_city` (a slug from `src/lib/app/cities.ts`) and
+`launch_city_only` ("1" = local mode). `getLaunchScope()` in `src/lib/app/launch.ts` (cached per
+request) turns that into the list of temples whose free-text `city` names the launch city. With local
+mode on, the catalogue queries in `src/lib/app/queries.ts` show only those temples, their services and
+temple-independent services (pandit at home, astrology); the pandit directory shows pandits living
+there (astrology stays nationwide); out-of-city service pages show "Not available in <city> yet",
+checkout redirects back, and `createBookingAction` refuses them. Home visits and deliveries must be
+addressed inside the city (checkout locks the city field). The launch city is also the default
+location for panchang when a visitor hasn't picked one. Turning local mode off restores everything.
+
+The launch city's temples and starter offerings live in `src/data/local-temples.ts` and the
+`LOCAL_SERVICES` section of `src/data/services.ts`; `scripts/db/add-local-catalog.ts` adds them to a
+database without touching anything else (`--launch` also switches local mode on).
+
+## Production database hygiene
+
+- Supabase exposes every table in `public` through its REST API to anyone holding the publishable key.
+  The app never uses that API, so `scripts/db/supabase-lockdown.sql` turns on row level security and
+  revokes the API roles' grants. Re-run it after any production schema change.
+- Weekly services store their next performance date. The daily cron (`runAllReminders`) rolls past
+  dates forward in whole weeks, keeping the weekday; checkout never starts from a past date.
+
 ## Reminders ("push near-date things")
 
 `src/lib/reminders.ts` runs from `GET /api/cron/reminders?secret=CRON_SECRET` (call from any
