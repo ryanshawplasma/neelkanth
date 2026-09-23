@@ -54,6 +54,7 @@ model User {
   consultations   Consultation[]     @relation("UserConsultations")
   supportThread   SupportThread?
   supportMessages SupportMessage[]
+  storedFiles     StoredFile[]
 }
 
 model FamilyMember {
@@ -657,6 +658,27 @@ model Campaign {
   sentCount   Int       @default(0)
   status      String    @default("DRAFT") // DRAFT | SCHEDULED | SENT
   createdAt   DateTime  @default(now())
+}
+
+// ─────────────────────────── Uploaded files ───────────────────────────
+
+/// An uploaded file kept in the database. Used for private documents (KYC) everywhere, and for
+/// public images on serverless hosts that have no object storage configured (no Vercel Blob token).
+model StoredFile {
+  id          String   @id @default(cuid())
+  folder      String
+  /// Safe file name including its extension (the served URL ends with it).
+  name        String
+  contentType String
+  size        Int
+  data        Bytes
+  /// Private files are only served to their uploader and to admins.
+  isPrivate   Boolean  @default(false)
+  ownerId     String?
+  owner       User?    @relation(fields: [ownerId], references: [id], onDelete: SetNull)
+  createdAt   DateTime @default(now())
+
+  @@index([ownerId, createdAt])
 }
 
 // ─────────────────────────── Support chat ───────────────────────────

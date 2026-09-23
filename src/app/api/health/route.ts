@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { db, datasourceUrl } from "@/lib/db";
+import { publicUploadBackend } from "@/lib/uploads";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -58,7 +59,8 @@ export async function GET() {
       push: Boolean(process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY),
       sms: process.env.SMS_PROVIDER === "renflair" && process.env.RENFLAIR_API_KEY ? "renflair" : "console",
       payments: process.env.PAYMENT_PROVIDER === "razorpay" && process.env.RAZORPAY_KEY_ID ? "razorpay" : "mock",
-      uploads: process.env.BLOB_READ_WRITE_TOKEN ? "vercel-blob" : process.env.VERCEL ? "unconfigured" : "local-disk",
+      // Public images; KYC documents always stay private in the database.
+      uploads: ({ blob: "vercel-blob", database: "database", disk: "local-disk" } as const)[publicUploadBackend()],
       cron: Boolean(process.env.CRON_SECRET),
       region: process.env.VERCEL_REGION ?? null,
       env,

@@ -17,7 +17,7 @@ festival calendar with reminders, a pandit portal with KYC, and a full admin con
 | Push | web-push (VAPID) + service worker `public/sw.js`; in-app `Notification` table |
 | Panchang | `mhah-panchang` + `suncalc` wrapped in `src/lib/panchang.ts` |
 | Payments | Provider abstraction `src/lib/payments.ts`: `mock` (built-in simulator page) or `razorpay` |
-| Uploads | `POST /api/upload` → `public/uploads/<folder>/…` (swap for S3 later) |
+| Uploads | `POST /api/upload` → Vercel Blob if `BLOB_READ_WRITE_TOKEN`, else the database on serverless hosts (`StoredFile`, served by `/api/files/:id/:name`), else `public/uploads/`. KYC is always private (see below) |
 
 ## Roles & route groups
 
@@ -107,6 +107,18 @@ GET route (`/api/support/messages`, `/api/admin/support/[id]/messages`) every 3�
 works on serverless hosts without websockets. Unread counters live on the thread; push/in-app
 notifications (type `SUPPORT`) go out for the first unread message of a burst and not while the other
 side has the chat open (`userSeenAt` / `adminSeenAt`). A customer message reopens a resolved thread.
+
+## Uploads
+
+`src/lib/uploads.ts` decides where a file goes and who may upload it. Folders are allow-listed per role
+(pandits: `kyc`, `pandits`, `pooja-photos`; devotees: `avatars`; admins: any) and only admins may upload
+SVG. Files in `kyc` are always stored privately in the database and served by `/api/files/:id/:name` only
+to their uploader and to admins (`Cache-Control: no-store`). Public files use Vercel Blob when configured,
+otherwise the database on serverless hosts (cached a year at the CDN), otherwise `public/uploads/`.
+Served files carry a sandboxing CSP so an SVG or PDF opened directly cannot run script. The browser
+shrinks photos before upload (`uploadFile` in `src/components/ui/image-upload.tsx`: max 1920px,
+re-encoded, EXIF/GPS stripped) because Vercel rejects request bodies over 4.5 MB; the server caps files
+at 4 MB and rate-limits non-admin database uploads (40 an hour, 60 MB a day).
 
 ## Reminders ("push near-date things")
 
