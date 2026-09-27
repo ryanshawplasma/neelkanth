@@ -4,6 +4,7 @@ import { getLocale } from "@/i18n/server";
 import { getDictionary } from "@/i18n";
 import { LocaleProvider } from "@/i18n/client";
 import { ToastProvider } from "@/components/ui/toast";
+import { NativePushKeeper } from "@/components/native-push";
 
 const APP_NAME = process.env.NEXT_PUBLIC_APP_NAME ?? "DivyaDham";
 
@@ -46,6 +47,9 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <LocaleProvider locale={locale} dict={dict}>
           <ToastProvider>{children}</ToastProvider>
         </LocaleProvider>
+        {/* Inside the phone apps only: registers for notifications and opens a
+            tapped one. Renders nothing, and does nothing in a browser. */}
+        <NativePushKeeper />
       </body>
     </html>
   );

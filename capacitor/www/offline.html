@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>No connection · DivyaDham</title>
+    <!--
+      Shown by the native shell when the site cannot be reached, in place of the
+      web view's own error page. Self-contained on purpose: it appears at the
+      exact moment nothing can be fetched, so a stylesheet, a font or an image
+      from anywhere else would be a second thing that fails. Colours are the
+      site's manifest (#fffaf3 ground, #f0642a saffron), hard-coded.
+    -->
+    <style>
+      :root {
+        color-scheme: light dark;
+        --bg: #fffaf3;
+        --surface: #ffffff;
+        --ink: #3b1d0f;
+        --muted: #7a5a48;
+        --brand: #f0642a;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #1a0f0a;
+          --surface: #26170f;
+          --ink: #fbeee4;
+          --muted: #c9a996;
+          --brand: #ff8a50;
+        }
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        padding: 24px;
+        background: var(--bg);
+        color: var(--ink);
+        font: 16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      }
+      main {
+        width: 100%;
+        max-width: 360px;
+        padding: 28px 24px;
+        border-radius: 20px;
+        background: var(--surface);
+        text-align: center;
+      }
+      h1 { margin: 12px 0 4px; font-size: 22px; }
+      p { margin: 0 0 4px; color: var(--muted); }
+      .hi { margin-top: 12px; }
+      button {
+        margin-top: 20px;
+        width: 100%;
+        min-height: 48px;
+        border: 0;
+        border-radius: 12px;
+        background: var(--brand);
+        color: #fff;
+        font: inherit;
+        font-weight: 600;
+      }
+      .mark { font-size: 40px; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <div class="mark" aria-hidden="true">🪔</div>
+      <h1>No connection</h1>
+      <p>DivyaDham needs the internet. Check your connection and try again.</p>
+      <p class="hi" lang="hi">इंटरनेट से जुड़ें और फिर से कोशिश करें।</p>
+      <button type="button" onclick="location.href = 'https://neelkanth-alpha.vercel.app/'">Try again · फिर से</button>
+    </main>
+  </body>
+</html>
