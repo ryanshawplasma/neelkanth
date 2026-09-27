@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Bell, BellRing } from "lucide-react";
 import { useT } from "@/i18n/client";
 import { cn } from "@/lib/utils";
+import { isNativeApp, nativeState, registerNative } from "@/components/native-push";
 
 function urlBase64ToUint8Array(base64String: string) {
   const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
@@ -37,11 +38,20 @@ export function EnablePushButton({ className, compact }: { className?: string; c
   const key = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
 
   useEffect(() => {
+    // Inside the phone app: Firebase, not web push (see native-push.tsx).
+    if (isNativeApp()) {
+      void nativeState().then(setState);
+      return;
+    }
     if (!("Notification" in window) || !("serviceWorker" in navigator) || !("PushManager" in window) || !key) return setState("unsupported");
     setState(Notification.permission === "granted" ? "granted" : Notification.permission === "denied" ? "denied" : "prompt");
   }, [key]);
 
   async function enable() {
+    if (isNativeApp()) {
+      setState(await registerNative({ ask: true }));
+      return;
+    }
     try {
       const perm = await Notification.requestPermission();
       if (perm !== "granted") return setState(perm === "denied" ? "denied" : "prompt");

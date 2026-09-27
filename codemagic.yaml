@@ -1,0 +1,146 @@
+# Codemagic builds of DivyaDham's phone apps: Android (a Play bundle) and
+# iPhone (TestFlight). No Mac or Android Studio needed on anyone's desk.
+#
+# The apps are this website in a Capacitor shell (capacitor.config.ts): the
+# shell opens the live site, so a web deploy reaches both apps with no store
+# update. A new build is needed only when the SHELL changes (android/, ios/,
+# capacitor.config.ts, the notification plumbing's native half).
+#
+# Secrets live in Codemagic's secure variable groups, never in the repo:
+#   ios      APPSTORE_PRIVATE_KEY (App Store Connect API key .p8, Admin role),
+#            GOOGLE_SERVICE_INFO_PLIST (Firebase iOS config)
+#   android  GOOGLE_SERVICES_JSON (Firebase Android config),
+#            ANDROID_KEYSTORE_BASE64, ANDROID_KEYSTORE_PASSWORD,
+#            ANDROID_KEY_ALIAS, ANDROID_KEY_PASSWORD (the Play UPLOAD key)
+#
+# Adapted from ryanshawplasma/dino's codemagic.yaml, where each step below was
+# learned the hard way: the iPhone signs ad-hoc then exports with Apple's
+# cloud-managed certificate (no Mac holds a certificate), and every build is
+# READ BACK (ios-verify.sh, android-verify below) because a wrong app can build
+# green.
+
+workflows:
+  divyadham-ios:
+    name: DivyaDham (iPhone)
+    instance_type: mac_mini_m2
+    max_build_duration: 60
+    environment:
+      groups:
+        - ios
+      vars:
+        TEAM_ID: 7QY2ZZPY98
+        ASC_KEY_ID: V539W3J45P
+        ASC_ISSUER_ID: e958d426-652d-4883-bcff-c28ef79cbf9c
+        APP_VERSION_NAME: "1.0.0"
+        UPLOAD: "true"
+      node: lts
+      xcode: latest
+    cache:
+      cache_paths:
+        - $HOME/.npm
+    scripts:
+      - name: Install, signing key, build number
+        script: |
+          set -euo pipefail
+          npm ci
+          ASC_PRIVATE_KEY="${APPSTORE_PRIVATE_KEY:-}" bash scripts/native/ios-asc-key.sh
+          bash scripts/native/ios-export-options.sh
+          {
+            echo "export ASC_KEY_PATH=$HOME/.appstoreconnect/private_keys/AuthKey_${ASC_KEY_ID}.p8"
+            echo "export BUILD_NUMBER=$(( $(date -u +%s) / 60 ))"
+          } > "$HOME/.divyadham-ios-env"
+          grep BUILD_NUMBER "$HOME/.divyadham-ios-env"
+      - name: Sync Capacitor
+        script: |
+          set -euo pipefail
+          npx cap sync ios
+      - name: Firebase config
+        script: |
+          set -euo pipefail
+          PLIST="${GOOGLE_SERVICE_INFO_PLIST:-}" bash scripts/native/ios-firebase-plist.sh com.neelkanth.myapp
+      - name: Archive DivyaDham
+        script: |
+          set -euo pipefail
+          . "$HOME/.divyadham-ios-env"
+          cd ios/App && bash ../../scripts/native/ios-archive.sh
+      - name: Verify DivyaDham
+        script: |
+          set -euo pipefail
+          . "$HOME/.divyadham-ios-env"
+          cd ios/App && bash ../../scripts/native/ios-verify.sh com.neelkanth.myapp "DivyaDham" "https://neelkanth-alpha.vercel.app"
+      - name: Upload DivyaDham to TestFlight
+        script: |
+          set -euo pipefail
+          [ "$UPLOAD" = true ] || { echo "UPLOAD=$UPLOAD — built and checked, not sent"; exit 0; }
+          xcrun altool --upload-app -t ios -f ios/App/build/app-export/App.ipa --apiKey "$ASC_KEY_ID" --apiIssuer "$ASC_ISSUER_ID"
+    artifacts:
+      - ios/App/build/app-export/*.ipa
+    publishing:
+      scripts:
+        - rm -rf "$HOME/.appstoreconnect" ios/App/App/GoogleService-Info.plist
+
+  divyadham-android:
+    name: DivyaDham (Android)
+    instance_type: mac_mini_m2
+    max_build_duration: 45
+    environment:
+      groups:
+        - android
+      vars:
+        APP_VERSION_NAME: "1.0.0"
+        # The Play upload certificate (.secrets/android on the owner's PC).
+        # The bundle is refused below unless it is signed by exactly this key.
+        UPLOAD_CERT_SHA256: "4E:36:29:1F:CB:3E:8B:2D:B0:DC:61:91:67:2A:00:2C:40:74:D3:F0:2B:9B:07:A4:F8:6D:47:38:3B:4E:CD:14"
+      java: 21
+      node: lts
+    cache:
+      cache_paths:
+        - $HOME/.npm
+        - $HOME/.gradle/caches
+    scripts:
+      - name: Install, Firebase config, signing key
+        script: |
+          set -euo pipefail
+          npm ci
+          [ -n "${GOOGLE_SERVICES_JSON:-}" ] || { echo "::error::GOOGLE_SERVICES_JSON is empty: the app would build and never receive a notification" >&2; exit 1; }
+          printf '%s' "$GOOGLE_SERVICES_JSON" > android/app/google-services.json
+          node -e 'const j=require("./android/app/google-services.json"); if(!j.client.some(c=>c.client_info.android_client_info.package_name==="com.neelkanth.myapp")){console.error("::error::no com.neelkanth.myapp client in GOOGLE_SERVICES_JSON");process.exit(1)}'
+          [ -n "${ANDROID_KEYSTORE_BASE64:-}" ] || { echo "::error::ANDROID_KEYSTORE_BASE64 is empty" >&2; exit 1; }
+          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > android/app/upload-keystore.jks
+          echo "export APP_VERSION_CODE=$(( $(date -u +%s) / 60 ))" > "$HOME/.divyadham-android-env"
+          cat "$HOME/.divyadham-android-env"
+      - name: Build the Play bundle
+        script: |
+          set -euo pipefail
+          . "$HOME/.divyadham-android-env"
+          APP_VERSION_NAME="$APP_VERSION_NAME" npx cap sync android
+          cd android
+          ./gradlew --no-daemon bundleRelease \
+            -PappVersionCode="$APP_VERSION_CODE" -PappVersionName="$APP_VERSION_NAME" \
+            -PappStoreFile=upload-keystore.jks -PappStorePassword="$ANDROID_KEYSTORE_PASSWORD" \
+            -PappKeyAlias="$ANDROID_KEY_ALIAS" -PappKeyPassword="$ANDROID_KEY_PASSWORD"
+      - name: Verify the bundle
+        script: |
+          set -euo pipefail
+          . "$HOME/.divyadham-android-env"
+          AAB=$(ls android/app/build/outputs/bundle/release/*.aab)
+          SHA=$(keytool -printcert -jarfile "$AAB" | sed -n 's/.*SHA256: *\([0-9A-F:]*\).*/\1/p' | head -1)
+          [ "$SHA" = "$UPLOAD_CERT_SHA256" ] || { echo "::error::signed by '$SHA', not the Play upload key" >&2; exit 1; }
+          echo "ok  signed by the Play upload key"
+          MANIFEST=$(unzip -p "$AAB" base/manifest/AndroidManifest.xml | LC_ALL=C tr -c '[:print:]' '\n')
+          echo "$MANIFEST" | grep -q 'com.neelkanth.myapp' || { echo "::error::package is not com.neelkanth.myapp" >&2; exit 1; }
+          echo "ok  package com.neelkanth.myapp"
+          CAP=$(unzip -p "$AAB" base/assets/capacitor.config.json)
+          echo "$CAP" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const c=JSON.parse(s); if(c.server.url!=="https://neelkanth-alpha.vercel.app"){console.error("::error::server.url is "+c.server.url);process.exit(1)} if(!String(c.appendUserAgent).includes("DivyaDhamApp/"+process.env.APP_VERSION_NAME)){console.error("::error::user agent is "+c.appendUserAgent);process.exit(1)} console.log("ok  opens "+c.server.url+", user agent "+c.appendUserAgent)})'
+          # Unpacked to a file, not piped: resources.pb is ~450 KB, grep -q stops at the
+          # first match, unzip then dies of SIGPIPE, and pipefail reports the bundle
+          # as missing the id it carries. That false alarm failed the first green build.
+          unzip -p "$AAB" base/resources.pb > "$HOME/divyadham-resources.pb"
+          LC_ALL=C grep -a -q 'e676ba3882f7ae9514afa5' "$HOME/divyadham-resources.pb" || { echo "::error::the bundle does not carry DivyaDham's Firebase app id" >&2; exit 1; }
+          echo "ok  DivyaDham's Firebase config inside"
+          echo "every check passed: versionCode $APP_VERSION_CODE, versionName $APP_VERSION_NAME"
+    artifacts:
+      - android/app/build/outputs/bundle/release/*.aab
+    publishing:
+      scripts:
+        - rm -f android/app/upload-keystore.jks android/app/google-services.json

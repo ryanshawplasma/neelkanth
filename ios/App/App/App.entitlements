@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+	Without aps-environment, registerForRemoteNotifications fails with "no valid
+	aps-environment entitlement string found" and the app never gets a push
+	token: every reminder silently missing on iPhone while the build and the
+	upload are both green. `development` is what Xcode itself writes; exporting
+	for the App Store re-signs it as production from the distribution profile
+	(ios-verify.sh reads the signed value). The com.neelkanth.myapp App ID has
+	Push Notifications enabled, which is what lets this sign.
+-->
+<plist version="1.0">
+<dict>
+	<key>aps-environment</key>
+	<string>development</string>
+</dict>
+</plist>

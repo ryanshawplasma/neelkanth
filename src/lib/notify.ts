@@ -2,6 +2,7 @@ import "server-only";
 import webpush from "web-push";
 import type { NotificationType } from "@prisma/client";
 import { db } from "./db";
+import { isNativeEndpoint, NATIVE_PREFIX, sendNative } from "./fcm";
 
 let vapidReady = false;
 function ensureVapid() {
@@ -61,30 +62,43 @@ export async function notifyMany(userIds: string[], input: Omit<NotifyInput, "us
   return count;
 }
 
+/**
+ * Every device the person has: browsers through web push (VAPID), the phone
+ * apps through Firebase (lib/fcm.ts, rows whose endpoint is `fcm:<token>`).
+ * Either transport may be unconfigured; the other still sends.
+ */
 async function sendPush(userId: string, notificationId: string, input: Omit<NotifyInput, "userId">) {
-  if (!ensureVapid()) return false;
   const [subs, user] = await Promise.all([
     db.pushSubscription.findMany({ where: { userId } }),
     db.user.findUnique({ where: { id: userId }, select: { locale: true } }),
   ]);
   if (!subs.length) return false;
   const hi = user?.locale === "hi";
-  const payload = JSON.stringify({
+  const message = {
     id: notificationId,
     title: hi ? input.titleHi : input.titleEn,
     body: hi ? input.bodyHi ?? input.bodyEn : input.bodyEn ?? input.bodyHi,
     url: input.href ?? "/notifications",
     image: input.imageUrl,
-  });
+  };
+  const payload = JSON.stringify(message);
   let ok = false;
-  for (const s of subs) {
-    try {
-      await webpush.sendNotification({ endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } }, payload, { TTL: 60 * 60 * 24 });
-      ok = true;
-    } catch (e: unknown) {
-      const status = (e as { statusCode?: number }).statusCode;
-      if (status === 404 || status === 410) await db.pushSubscription.delete({ where: { id: s.id } }).catch(() => {});
+  const web = subs.filter((s) => !isNativeEndpoint(s.endpoint));
+  if (web.length && ensureVapid()) {
+    for (const s of web) {
+      try {
+        await webpush.sendNotification({ endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } }, payload, { TTL: 60 * 60 * 24 });
+        ok = true;
+      } catch (e: unknown) {
+        const status = (e as { statusCode?: number }).statusCode;
+        if (status === 404 || status === 410) await db.pushSubscription.delete({ where: { id: s.id } }).catch(() => {});
+      }
     }
+  }
+  for (const s of subs.filter((s) => isNativeEndpoint(s.endpoint))) {
+    const sent = await sendNative(s.endpoint.slice(NATIVE_PREFIX.length), message);
+    if (sent.ok) ok = true;
+    else if (sent.gone) await db.pushSubscription.delete({ where: { id: s.id } }).catch(() => {});
   }
   return ok;
 }
