@@ -66,5 +66,15 @@
 	</array>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<true/>
+	<!-- No encryption beyond HTTPS: answers App Store Connect's export question
+	     for every build, so TestFlight never stops to ask. -->
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
+	<!-- The site's photo uploads (profile, a pandit's KYC) open the camera or the
+	     library from a file input. iOS kills the app on that first tap without these. -->
+	<key>NSCameraUsageDescription</key>
+	<string>DivyaDham uses the camera when you choose to take a photo to upload, such as a profile photo or a document for verification.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>DivyaDham opens your photos when you choose one to upload, such as a profile photo or a document for verification.</string>
 </dict>
 </plist>

@@ -35,7 +35,51 @@
         </provider>
     </application>
 
-    <!-- Permissions -->
+    <!-- Permissions. POST_NOTIFICATIONS arrives from @capacitor-firebase/messaging's
+         own manifest, merged at build time. -->
 
     <uses-permission android:name="android.permission.INTERNET" />
+
+    <!--
+        The apps a page may hand over to. Razorpay's checkout opens the guest's
+        UPI app (upi://, or a named one), and on Android 11+ an app can only
+        launch another it has declared here: package visibility is opt-in, and an
+        undeclared scheme resolves to NOTHING, so a UPI payment silently fails.
+        The same list as Dino's shell (ryanshawplasma/dino), which takes UPI
+        payments this way.
+    -->
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="upi" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="tez" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="phonepe" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="paytmmp" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="bhim" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.DIAL" />
+            <data android:scheme="tel" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.SENDTO" />
+            <data android:scheme="mailto" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="https" />
+        </intent>
+    </queries>
 </manifest>

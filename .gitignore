@@ -51,3 +51,11 @@ public/uploads/*
 
 # demo assets referenced by the seed must ship with the repo
 !public/uploads/demo/
+
+# Native app secrets: written by the build machine from Codemagic's secure
+# variables (codemagic.yaml), never committed.
+android/app/google-services.json
+ios/App/App/GoogleService-Info.plist
+*.jks
+*.keystore
+keystore.properties

@@ -7,8 +7,11 @@ android {
         applicationId "com.neelkanth.myapp"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
-        versionName "1.0"
+        // The build machine passes these (codemagic.yaml: -PappVersionCode,
+        // -PappVersionName). Play refuses any upload whose code is not higher
+        // than the last, so the code is minutes since 1970: always rising.
+        versionCode ((findProperty("appVersionCode") ?: "1") as Integer)
+        versionName ((findProperty("appVersionName") ?: "1.0") as String)
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
@@ -16,8 +19,24 @@ android {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    // The Play UPLOAD key, from the build machine's environment. Without it a
+    // release still builds, UNSIGNED, and Play refuses it at upload; the build
+    // script checks the signature instead of trusting this block.
+    signingConfigs {
+        release {
+            if (findProperty("appStoreFile")) {
+                storeFile file(findProperty("appStoreFile"))
+                storePassword findProperty("appStorePassword")
+                keyAlias findProperty("appKeyAlias")
+                keyPassword findProperty("appKeyPassword")
+            }
+        }
+    }
     buildTypes {
         release {
+            if (findProperty("appStoreFile")) {
+                signingConfig signingConfigs.release
+            }
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
