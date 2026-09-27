@@ -21,13 +21,20 @@ const EXPECTED_ENV = [
   "ADMIN_PASSWORD",
 ] as const;
 
+/**
+ * Values that are not secret, so their length may be shown. Everything else reports only whether
+ * it is set: this page is public, and it used to tell anyone that ADMIN_PASSWORD was 9 characters
+ * long, which is the length of the password the README publishes (and the one in use).
+ */
+const PUBLIC_ENV = new Set<string>(["NEXT_PUBLIC_APP_URL", "NEXT_PUBLIC_VAPID_PUBLIC_KEY", "VAPID_SUBJECT", "SMS_PROVIDER", "PAYMENT_PROVIDER"]);
+
 /** Mask anything that looks like credentials inside a URL. */
 const mask = (s: string) => s.replace(/(\/\/[^:/@\s]+:)[^@\s]*@/g, "$1***@");
 
 /**
  * GET /api/health — deployment self-check (no secrets are returned).
  * Reports whether the database is reachable and seeded, which optional services are configured,
- * and which expected environment variables are present (names only, plus their length).
+ * and which expected environment variables are present (names only; the length of public ones).
  */
 export async function GET() {
   const url = datasourceUrl() ?? "";
@@ -47,7 +54,10 @@ export async function GET() {
   const env = Object.fromEntries(
     EXPECTED_ENV.map((k) => {
       const v = process.env[k];
-      return [k, v === undefined ? "missing" : v.length === 0 ? "empty" : `set (${v.length} chars${/^["']/.test(v) ? ", starts with a quote" : ""})`];
+      if (v === undefined) return [k, "missing"];
+      if (v.length === 0) return [k, "empty"];
+      const notes = [PUBLIC_ENV.has(k) ? `${v.length} chars` : "", /^["']/.test(v) ? "starts with a quote" : ""].filter(Boolean);
+      return [k, notes.length ? `set (${notes.join(", ")})` : "set"];
     }),
   );
 

@@ -21,6 +21,12 @@ npm run dev       # http://localhost:3000
 
 The OTP is fixed in development (`OTP_DEV_CODE` in `.env`) and also printed to the server console.
 
+These logins are for a **local** database only. This repository is public, so `Admin@123` is nobody's secret:
+the seed refuses to create the admin on a hosted (Postgres) database with it, and never changes an existing
+admin's password. Set `ADMIN_PASSWORD` to your own before the first hosted seed, change it any time in
+**Admin → Settings → Admin password** (every other signed-in device is signed out), or from a terminal with
+`npm run admin:password` when nobody can sign in.
+
 ## What's inside
 
 - **Devotee app** (mobile-first PWA): home with today's panchang + festival countdowns, pooja/chadhava/prasad catalog,

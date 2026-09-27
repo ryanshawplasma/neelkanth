@@ -11,13 +11,16 @@ import {
   createSession,
   destroySession,
   forgetDeviceAccount,
+  getCurrentUser,
   getDeviceAccounts,
   getDeviceEntry,
   getSession,
   homePathFor,
   normalizePhone,
+  passwordFingerprint,
 } from "./auth";
 import type { AccountArea, DeviceAccount } from "./account-types";
+import { PUBLISHED_ADMIN_PASSWORD, adminPasswordProblem } from "./admin-password";
 import { OtpDeliveryError, requestOtp, verifyOtp } from "./otp";
 import { LOCALE_COOKIE, isLocale } from "@/i18n/config";
 
@@ -69,19 +72,40 @@ export async function verifyOtpAction(
     user = await db.user.update({ where: { id: user.id }, data: { role: "PANDIT" }, include: { pandit: true } });
   }
   await db.user.update({ where: { id: user.id }, data: { lastSeenAt: new Date() } });
-  await createSession(user.id, user.role);
+  await createSession(user.id, user.role, { pwf: passwordFingerprint(user.passwordHash) });
   await audit(user.id, isNew ? "auth.signup" : "auth.login", "User", user.id, { intent });
   return { ok: true, data: { isNew, onboarded: user.onboarded, role: user.role, hasPanditProfile: !!user.pandit } };
 }
 
-/** Admin email + password login. */
-export async function adminLoginAction(email: string, password: string): Promise<ActionResult> {
+/**
+ * Admin email + password login. Signing in with the README's published password still works, so
+ * the owner can get in to change it, but lands straight on the change-password form.
+ */
+export async function adminLoginAction(email: string, password: string): Promise<ActionResult<{ mustChangePassword: boolean }>> {
   const user = await db.user.findUnique({ where: { email: email.trim().toLowerCase() } });
   if (!user || user.role !== "ADMIN" || !user.passwordHash) return { ok: false, error: "invalidCredentials" };
   const ok = await bcrypt.compare(password, user.passwordHash);
   if (!ok) return { ok: false, error: "invalidCredentials" };
-  await createSession(user.id, user.role);
+  await createSession(user.id, user.role, { pwf: passwordFingerprint(user.passwordHash) });
   await audit(user.id, "auth.admin_login", "User", user.id);
+  return { ok: true, data: { mustChangePassword: password === PUBLISHED_ADMIN_PASSWORD } };
+}
+
+/**
+ * Change the signed-in admin's password. Every session and remembered sign-in made with the old
+ * password ends at once (passwordFingerprint), on every device; this one continues with the new.
+ */
+export async function changeAdminPasswordAction(current: string, next: string): Promise<ActionResult> {
+  const me = await getCurrentUser();
+  if (!me || me.role !== "ADMIN" || !me.passwordHash) return { ok: false, error: "admin.errPasswordNotAdmin" };
+  if (!(await bcrypt.compare(current, me.passwordHash))) return { ok: false, error: "admin.errPasswordCurrent" };
+  const problem = adminPasswordProblem(next, current);
+  if (problem) return { ok: false, error: `admin.${problem}` };
+
+  const passwordHash = await bcrypt.hash(next, 12);
+  await db.user.update({ where: { id: me.id }, data: { passwordHash } });
+  await createSession(me.id, me.role, { pwf: passwordFingerprint(passwordHash) });
+  await audit(me.id, "auth.admin_password_changed", "User", me.id);
   return { ok: true };
 }
 
@@ -117,10 +141,17 @@ export async function switchAccountAction(uid: string, to?: string): Promise<Act
     await forgetDeviceAccount(uid);
     return { ok: false, error: "accountUnavailable" };
   }
+  // Switching asks for no password, so it may only carry the one the account signed in with here:
+  // after a password change, a remembered sign-in has to sign in again.
+  const carried = entry ? entry.f : session?.pwf;
+  if (user.passwordHash && carried !== passwordFingerprint(user.passwordHash)) {
+    await forgetDeviceAccount(uid);
+    return { ok: false, error: "accountUnavailable" };
+  }
 
   if (!isCurrent || session?.role !== user.role) {
     // Keep the original sign-in time so switching never extends a session.
-    await createSession(user.id, user.role, { signedInAt: entry?.t ?? session?.sia });
+    await createSession(user.id, user.role, { signedInAt: entry?.t ?? session?.sia, pwf: carried });
     if (!isCurrent) await audit(user.id, "auth.switch_account", "User", user.id, { from: session?.uid ?? null });
   }
   const href = to && canOpenPath(user, to) ? to : homePathFor(user);

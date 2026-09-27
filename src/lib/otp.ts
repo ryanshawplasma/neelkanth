@@ -19,6 +19,11 @@ function provider(): Provider {
   return process.env.SMS_PROVIDER === "renflair" && process.env.RENFLAIR_API_KEY ? "renflair" : "console";
 }
 
+/** Whether sign-in codes are the fixed OTP_DEV_CODE: local development only, never in production. */
+export function usesDevOtp() {
+  return provider() === "console" && !!process.env.OTP_DEV_CODE && process.env.NODE_ENV !== "production";
+}
+
 function randomOtp() {
   const min = 10 ** (OTP_LENGTH - 1);
   return String(min + Math.floor(Math.random() * (9 * min)));
@@ -60,7 +65,7 @@ async function deliver(target: string, code: string) {
 }
 
 export async function requestOtp(target: string) {
-  const useDevCode = provider() === "console" && process.env.OTP_DEV_CODE && process.env.NODE_ENV !== "production";
+  const useDevCode = usesDevOtp();
   const code = useDevCode ? process.env.OTP_DEV_CODE! : randomOtp();
 
   // Deliver first so a gateway failure doesn't leave a dangling code.
