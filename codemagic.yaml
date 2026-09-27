@@ -132,7 +132,11 @@ workflows:
           echo "ok  package com.neelkanth.myapp"
           CAP=$(unzip -p "$AAB" base/assets/capacitor.config.json)
           echo "$CAP" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const c=JSON.parse(s); if(c.server.url!=="https://neelkanth-alpha.vercel.app"){console.error("::error::server.url is "+c.server.url);process.exit(1)} if(!String(c.appendUserAgent).includes("DivyaDhamApp/"+process.env.APP_VERSION_NAME)){console.error("::error::user agent is "+c.appendUserAgent);process.exit(1)} console.log("ok  opens "+c.server.url+", user agent "+c.appendUserAgent)})'
-          unzip -p "$AAB" base/resources.pb | LC_ALL=C grep -a -q 'e676ba3882f7ae9514afa5' || { echo "::error::the bundle does not carry DivyaDham's Firebase app id" >&2; exit 1; }
+          # Unpacked to a file, not piped: resources.pb is ~450 KB, grep -q stops at the
+          # first match, unzip then dies of SIGPIPE, and pipefail reports the bundle
+          # as missing the id it carries. That false alarm failed the first green build.
+          unzip -p "$AAB" base/resources.pb > "$HOME/divyadham-resources.pb"
+          LC_ALL=C grep -a -q 'e676ba3882f7ae9514afa5' "$HOME/divyadham-resources.pb" || { echo "::error::the bundle does not carry DivyaDham's Firebase app id" >&2; exit 1; }
           echo "ok  DivyaDham's Firebase config inside"
           echo "every check passed: versionCode $APP_VERSION_CODE, versionName $APP_VERSION_NAME"
     artifacts:
