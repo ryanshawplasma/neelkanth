@@ -1,6 +1,7 @@
 import "server-only";
 import type { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
+import { usesDevOtp } from "@/lib/otp";
 import { addDays, toDateKey } from "@/lib/utils";
 import { parsePaging, sp, type Paging, type SearchParams } from "./util";
 
@@ -572,7 +573,9 @@ export function getEnvInfo() {
   return {
     paymentProvider: process.env.PAYMENT_PROVIDER === "razorpay" && process.env.RAZORPAY_KEY_ID ? "razorpay" : "mock",
     vapidConfigured: !!(process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY),
-    otpDevMode: !!process.env.OTP_DEV_CODE,
+    // The rule requestOtp applies, not merely whether OTP_DEV_CODE exists: it is set on the live
+    // site, where it does nothing, and the badge read "on" there.
+    otpDevMode: usesDevOtp(),
     cronPath: "/api/cron/reminders?secret=…",
     cronConfigured: !!process.env.CRON_SECRET,
     appUrl: process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000",

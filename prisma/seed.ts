@@ -40,6 +40,7 @@ import {
   DEMO_SETTINGS,
 } from "@/data/demo";
 import { maskDoc, toDateKey } from "@/lib/utils";
+import { PUBLISHED_ADMIN_PASSWORD } from "@/lib/admin-password";
 
 const db = new PrismaClient();
 
@@ -72,7 +73,11 @@ function loadEnvFile() {
 if (!process.env.ADMIN_EMAIL || !process.env.ADMIN_PASSWORD || !process.env.DATABASE_URL) loadEnvFile();
 
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || "admin@divyadham.app";
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "Admin@123";
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || PUBLISHED_ADMIN_PASSWORD;
+/** Postgres = a hosted database (production or a preview); local development runs on SQLite. */
+const HOSTED_DB = /^postgres(ql)?:\/\//i.test(process.env.DATABASE_URL ?? "");
+/** Set by seedAdmin: whether this run created the admin (and so set its password). */
+let adminCreated = false;
 
 // ───────────────────────────── helpers ─────────────────────────────
 
@@ -198,14 +203,28 @@ async function seedSettings() {
 
 // ───────────────────────────── 2. admin ─────────────────────────────
 
+/**
+ * The password is set only when the admin is first created, and a hosted database is never given
+ * the published one. The live console ran on it: ADMIN_PASSWORD in the hosted environment was the
+ * README's value, and this upsert used to write it back on every run, so even a changed password
+ * would have reverted at the next seed. Change it in Admin → Settings, or `npm run admin:password`.
+ */
 async function seedAdmin() {
   const done = step("admin user");
-  const passwordHash = await bcrypt.hash(ADMIN_PASSWORD, 10);
-  await db.user.upsert({
-    where: { email: ADMIN_EMAIL },
-    create: { email: ADMIN_EMAIL, passwordHash, name: "Admin", role: "ADMIN", onboarded: true, locale: "en" },
-    update: { passwordHash, name: "Admin", role: "ADMIN", onboarded: true },
-  });
+  const existing = await db.user.findUnique({ where: { email: ADMIN_EMAIL }, select: { id: true } });
+  if (existing) {
+    await db.user.update({ where: { id: existing.id }, data: { name: "Admin", role: "ADMIN", onboarded: true } });
+  } else {
+    if (HOSTED_DB && ADMIN_PASSWORD === PUBLISHED_ADMIN_PASSWORD) {
+      throw new Error(
+        `Refusing to create the admin on a hosted database with the password the README publishes. ` +
+          `Set ADMIN_PASSWORD to your own, or create the admin with \`npm run admin:password\`.`,
+      );
+    }
+    const passwordHash = await bcrypt.hash(ADMIN_PASSWORD, 12);
+    await db.user.create({ data: { email: ADMIN_EMAIL, passwordHash, name: "Admin", role: "ADMIN", onboarded: true, locale: "en" } });
+    adminCreated = true;
+  }
   tally("users");
   done();
 }
@@ -922,7 +941,10 @@ async function main() {
   for (const key of Object.keys(totals)) console.log(`  ${key.padEnd(22)} ${totals[key]}`);
 
   console.log(`\nDone in ${((Date.now() - started) / 1000).toFixed(1)}s`);
-  console.log(`Admin: ${ADMIN_EMAIL} / ${ADMIN_PASSWORD}`);
+  // The password is shown only for a local database this run created it on: a hosted seed's
+  // output lands in build logs, and an existing admin's password is no longer the one in .env.
+  const shownPassword = !adminCreated ? "(password unchanged — not shown)" : HOSTED_DB ? "(the one in ADMIN_PASSWORD — not shown)" : ADMIN_PASSWORD;
+  console.log(`Admin: ${ADMIN_EMAIL} / ${shownPassword}`);
   console.log("Devotees: 9111111111, 9222222222, 9333333333 · Pandits: 9000000001–9000000006 · OTP 123456\n");
 }
 

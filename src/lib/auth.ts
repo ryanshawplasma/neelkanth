@@ -1,4 +1,5 @@
 import "server-only";
+import { createHash } from "node:crypto";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { SignJWT, jwtVerify } from "jose";
@@ -16,8 +17,20 @@ const MAX_DEVICE_ACCOUNTS = 5;
 /**
  * `sia` = when the person actually signed in (epoch seconds). Switching accounts re-issues the
  * session but keeps `sia`, so a session still ends 30 days after the real sign-in.
+ * `pwf` = passwordFingerprint of the password the session was made with (password accounts only).
  */
-export type SessionPayload = { uid: string; role: Role; sia?: number };
+export type SessionPayload = { uid: string; role: Role; sia?: number; pwf?: string };
+
+/**
+ * A short fingerprint of an account's password hash, carried in its sessions and its remembered
+ * sign-ins. Changing the password changes it, so every session made with the old password, on
+ * every device, stops working at once. Without this a password change closed nothing: sessions
+ * are signed cookies that live 30 days, and the admin console went live on the password the
+ * README publishes. Accounts that sign in by OTP have no password and carry none.
+ */
+export function passwordFingerprint(passwordHash: string | null | undefined) {
+  return passwordHash ? createHash("sha256").update(passwordHash).digest("base64url").slice(0, 16) : undefined;
+}
 
 const nowSeconds = () => Math.floor(Date.now() / 1000);
 const cookieBase = () => ({
@@ -33,7 +46,7 @@ function secret() {
 
 export async function signSession(payload: SessionPayload) {
   const sia = payload.sia ?? nowSeconds();
-  return new SignJWT({ uid: payload.uid, role: payload.role, sia })
+  return new SignJWT({ uid: payload.uid, role: payload.role, sia, ...(payload.pwf ? { pwf: payload.pwf } : {}) })
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
     .setExpirationTime(sia + SESSION_DAYS * DAY_SECONDS)
@@ -45,7 +58,8 @@ export async function verifySessionToken(token: string): Promise<SessionPayload 
     const { payload } = await jwtVerify(token, secret());
     if (typeof payload.uid !== "string") return null;
     const sia = typeof payload.sia === "number" ? payload.sia : typeof payload.iat === "number" ? payload.iat : nowSeconds();
-    return { uid: payload.uid, role: (payload.role as Role) ?? "USER", sia };
+    const pwf = typeof payload.pwf === "string" ? payload.pwf : undefined;
+    return { uid: payload.uid, role: (payload.role as Role) ?? "USER", sia, ...(pwf ? { pwf } : {}) };
   } catch {
     return null;
   }
@@ -56,18 +70,18 @@ export async function verifySessionToken(token: string): Promise<SessionPayload 
  * The account — and whoever was signed in just before — is remembered on the device, so the
  * person can switch back without signing in again.
  */
-export async function createSession(uid: string, role: Role, opts: { signedInAt?: number } = {}) {
+export async function createSession(uid: string, role: Role, opts: { signedInAt?: number; pwf?: string } = {}) {
   const jar = await cookies();
   const sia = opts.signedInAt ?? nowSeconds();
 
   const previousToken = jar.get(SESSION_COOKIE)?.value;
   const previous = previousToken ? await verifySessionToken(previousToken) : null;
-  const remembered: DeviceEntry[] = [{ u: uid, t: sia }];
-  if (previous && previous.uid !== uid) remembered.push({ u: previous.uid, t: previous.sia ?? sia });
+  const remembered: DeviceEntry[] = [deviceEntry(uid, sia, opts.pwf)];
+  if (previous && previous.uid !== uid) remembered.push(deviceEntry(previous.uid, previous.sia ?? sia, previous.pwf));
   for (const e of await readDeviceEntries()) if (!remembered.some((r) => r.u === e.u)) remembered.push(e);
   await writeDeviceEntries(remembered);
 
-  const token = await signSession({ uid, role, sia });
+  const token = await signSession({ uid, role, sia, pwf: opts.pwf });
   jar.set(SESSION_COOKIE, token, { ...cookieBase(), maxAge: Math.max(60, sia + SESSION_DAYS * DAY_SECONDS - nowSeconds()) });
 }
 
@@ -89,6 +103,8 @@ export async function getCurrentUser() {
   if (!s) return null;
   const user = await db.user.findUnique({ where: { id: s.uid }, include: { pandit: true } });
   if (!user || user.isBlocked) return null;
+  // Made with a password this account no longer has (or before sessions carried one).
+  if (user.passwordHash && s.pwf !== passwordFingerprint(user.passwordHash)) return null;
   return user;
 }
 
@@ -119,8 +135,13 @@ export async function requirePandit() {
 
 // ─────────────────────────── Accounts on this device ───────────────────────────
 
-/** u = user id, t = when that account signed in (epoch seconds). Most recently used first. */
-type DeviceEntry = { u: string; t: number };
+/**
+ * u = user id, t = when that account signed in (epoch seconds), f = passwordFingerprint it
+ * signed in with (password accounts only). Most recently used first.
+ */
+type DeviceEntry = { u: string; t: number; f?: string };
+
+const deviceEntry = (u: string, t: number, f?: string): DeviceEntry => (f ? { u, t, f } : { u, t });
 
 async function readDeviceEntries(): Promise<DeviceEntry[]> {
   const jar = await cookies();
@@ -136,7 +157,7 @@ async function readDeviceEntries(): Promise<DeviceEntry[]> {
       const e = raw as Partial<DeviceEntry> | null;
       if (!e || typeof e.u !== "string" || typeof e.t !== "number" || e.t <= cutoff || seen.has(e.u)) continue;
       seen.add(e.u);
-      out.push({ u: e.u, t: e.t });
+      out.push(deviceEntry(e.u, e.t, typeof e.f === "string" ? e.f : undefined));
     }
     return out.slice(0, MAX_DEVICE_ACCOUNTS);
   } catch {
@@ -191,6 +212,7 @@ export async function getDeviceAccounts(): Promise<DeviceAccount[]> {
       email: true,
       role: true,
       avatarUrl: true,
+      passwordHash: true,
       pandit: { select: { displayName: true, photoUrl: true } },
     },
   });
@@ -198,6 +220,9 @@ export async function getDeviceAccounts(): Promise<DeviceAccount[]> {
   return ids.flatMap((id) => {
     const u = byId.get(id);
     if (!u) return [];
+    // A sign-in made with a password the account has since changed cannot be switched back into.
+    const carried = id === session?.uid ? session.pwf : entries.find((e) => e.u === id)?.f;
+    if (u.passwordHash && carried !== passwordFingerprint(u.passwordHash)) return [];
     const detail = formatPhone(u.phone) ?? u.email;
     return [
       {

@@ -12,6 +12,7 @@
     "db:seed": "node scripts/prisma-provider.mjs && tsx prisma/seed.ts",
     "db:reset": "node scripts/prisma-provider.mjs && prisma db push --force-reset && tsx prisma/seed.ts",
     "db:studio": "node scripts/prisma-provider.mjs && prisma studio",
+    "admin:password": "node scripts/prisma-provider.mjs && prisma generate && tsx scripts/db/admin-password.ts",
     "cron:reminders": "tsx scripts/run-reminders.ts",
     "setup": "npm install && npm run db:push && npm run db:seed",
     "prisma:prepare": "node scripts/prisma-provider.mjs",

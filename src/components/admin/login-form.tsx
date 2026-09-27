@@ -26,7 +26,12 @@ export function AdminLoginForm({ next, adding = false }: { next?: string; adding
         setError(res.error === "invalidCredentials" ? t("admin.errInvalidCredentials") : tErr(t, res.error));
         return;
       }
-      const dest = next && next.startsWith("/admin") && !next.startsWith("/admin/login") ? next : "/admin";
+      // Signed in with the password the public README prints: straight to changing it.
+      const dest = res.data?.mustChangePassword
+        ? "/admin/settings?password=published#password"
+        : next && next.startsWith("/admin") && !next.startsWith("/admin/login")
+          ? next
+          : "/admin";
       if (adding) {
         window.location.assign(dest);
         return;
